@@ -4,24 +4,24 @@ Query helper functions for common database operations.
 
 import json
 import sqlite3
-from typing import List, Optional, Any, Dict
 from datetime import datetime
+from typing import Any
 
-from .schema import get_schema_version, migrate_schema
 from ..models import (
-    PhotoCreate,
-    Photo,
-    PersonCreate,
-    Person,
-    FaceCreate,
-    Face,
-    ContextCreate,
     Context,
-    RankingCreate,
-    Ranking,
-    PipelineRunCreate,
+    ContextCreate,
+    Face,
+    FaceCreate,
+    Person,
+    PersonCreate,
+    Photo,
+    PhotoCreate,
     PipelineRun,
+    PipelineRunCreate,
+    Ranking,
+    RankingCreate,
 )
+from .schema import migrate_schema
 
 
 class QueryHelper:
@@ -50,13 +50,13 @@ class QueryHelper:
         )
         return cursor.lastrowid
 
-    def get_photo_by_id(self, photo_id: int) -> Optional[Photo]:
+    def get_photo_by_id(self, photo_id: int) -> Photo | None:
         """Get photo by ID."""
         cursor = self.conn.execute("SELECT * FROM photos WHERE id = ?", (photo_id,))
         row = cursor.fetchone()
         return Photo.model_validate(dict(row)) if row else None
 
-    def get_photo_by_hash(self, content_hash: str) -> Optional[Photo]:
+    def get_photo_by_hash(self, content_hash: str) -> Photo | None:
         """Get photo by content hash."""
         cursor = self.conn.execute(
             "SELECT * FROM photos WHERE content_hash = ?", (content_hash,)
@@ -64,7 +64,7 @@ class QueryHelper:
         row = cursor.fetchone()
         return Photo.model_validate(dict(row)) if row else None
 
-    def get_all_photos(self) -> List[Photo]:
+    def get_all_photos(self) -> list[Photo]:
         """Get all photos."""
         cursor = self.conn.execute("SELECT * FROM photos ORDER BY created_at")
         return [Photo.model_validate(dict(row)) for row in cursor.fetchall()]
@@ -78,19 +78,61 @@ class QueryHelper:
         )
         return cursor.lastrowid
 
-    def get_person_by_id(self, person_id: int) -> Optional[Person]:
+    def get_person_by_id(self, person_id: int) -> Person | None:
         """Get person by database ID."""
         cursor = self.conn.execute("SELECT * FROM persons WHERE id = ?", (person_id,))
         row = cursor.fetchone()
         return Person.model_validate(dict(row)) if row else None
 
-    def get_person_by_person_id(self, person_id: str) -> Optional[Person]:
+    def get_person_by_person_id(self, person_id: str) -> Person | None:
         """Get person by user-defined person_id."""
         cursor = self.conn.execute(
             "SELECT * FROM persons WHERE person_id = ?", (person_id,)
         )
         row = cursor.fetchone()
         return Person.model_validate(dict(row)) if row else None
+
+    def upsert_person(self, person: PersonCreate) -> int:
+        """Insert or update a person record by person_id and return its row id."""
+        cursor = self.conn.execute(
+            """
+            INSERT INTO persons (person_id, name, birthday) VALUES (?, ?, ?)
+            ON CONFLICT(person_id) DO UPDATE SET
+                name = excluded.name,
+                birthday = excluded.birthday
+            """,
+            (person.person_id, person.name, person.birthday),
+        )
+        if cursor.lastrowid:
+            return cursor.lastrowid
+        existing = self.get_person_by_person_id(person.person_id)
+        assert existing is not None
+        return existing.id
+
+    # Anchor constraint operations
+    def upsert_anchor_constraints(
+        self, run_id: str, constraints_json: str, source_path: str | None = None
+    ) -> None:
+        """Persist serialized ConstraintSet for the given run (replaces existing)."""
+        self.conn.execute(
+            """
+            INSERT INTO anchor_constraints (run_id, source_path, constraints_json)
+            VALUES (?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                source_path = excluded.source_path,
+                constraints_json = excluded.constraints_json
+            """,
+            (run_id, source_path, constraints_json),
+        )
+
+    def get_anchor_constraints_json(self, run_id: str) -> str | None:
+        """Return serialized ConstraintSet JSON for run, or None if not stored."""
+        cursor = self.conn.execute(
+            "SELECT constraints_json FROM anchor_constraints WHERE run_id = ?",
+            (run_id,),
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
 
     # Face operations
     def insert_face(self, face: FaceCreate) -> int:
@@ -115,14 +157,14 @@ class QueryHelper:
         )
         return cursor.lastrowid
 
-    def get_faces_by_photo_id(self, photo_id: int) -> List[Face]:
+    def get_faces_by_photo_id(self, photo_id: int) -> list[Face]:
         """Get all faces for a photo."""
         cursor = self.conn.execute(
             "SELECT * FROM faces WHERE photo_id = ? ORDER BY id", (photo_id,)
         )
         return [Face.model_validate(dict(row)) for row in cursor.fetchall()]
 
-    def get_faces_by_person_id(self, person_id: int) -> List[Face]:
+    def get_faces_by_person_id(self, person_id: int) -> list[Face]:
         """Get all faces for a person."""
         cursor = self.conn.execute(
             "SELECT * FROM faces WHERE person_id = ? ORDER BY id", (person_id,)
@@ -214,7 +256,7 @@ class QueryHelper:
         )
         return cursor.lastrowid
 
-    def get_context_by_photo_id(self, photo_id: int) -> Optional[Context]:
+    def get_context_by_photo_id(self, photo_id: int) -> Context | None:
         """Get context for a photo."""
         cursor = self.conn.execute(
             "SELECT * FROM context WHERE photo_id = ?", (photo_id,)
@@ -243,7 +285,7 @@ class QueryHelper:
 
         return Context.model_validate(row_dict)
 
-    def get_photos_without_context(self) -> List[Photo]:
+    def get_photos_without_context(self) -> list[Photo]:
         """Get all photos that don't have context analysis."""
         cursor = self.conn.execute(
             """
@@ -258,7 +300,7 @@ class QueryHelper:
 
     def get_photos_without_context_batch(
         self, batch_size: int = 100, offset: int = 0
-    ) -> List[Photo]:
+    ) -> list[Photo]:
         """Get photos without context analysis in batches.
 
         Args:
@@ -281,6 +323,25 @@ class QueryHelper:
         )
         return [Photo.model_validate(dict(row)) for row in cursor.fetchall()]
 
+    def get_faces_with_person_by_photo(
+        self, photo_id: int
+    ) -> list[dict[str, Any]]:
+        """Return face rows joined with person.birthday for a given photo."""
+        cursor = self.conn.execute(
+            """
+            SELECT f.age_estimate, f.age_std, f.confidence, p.birthday, p.person_id
+            FROM faces f
+            LEFT JOIN persons p ON f.person_id = p.id
+            WHERE f.photo_id = ?
+            """,
+            (photo_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+    def clear_rankings(self) -> None:
+        """Delete all ranking rows (used before a fresh ranking pass)."""
+        self.conn.execute("DELETE FROM rankings")
+
     # Ranking operations
     def insert_ranking(self, ranking: RankingCreate) -> int:
         """Insert a new ranking record and return its ID."""
@@ -301,7 +362,7 @@ class QueryHelper:
         )
         return cursor.lastrowid
 
-    def get_ranking_by_photo_id(self, photo_id: int) -> Optional[Ranking]:
+    def get_ranking_by_photo_id(self, photo_id: int) -> Ranking | None:
         """Get ranking for a photo."""
         cursor = self.conn.execute(
             "SELECT * FROM rankings WHERE photo_id = ?", (photo_id,)
@@ -309,7 +370,7 @@ class QueryHelper:
         row = cursor.fetchone()
         return Ranking.model_validate(dict(row)) if row else None
 
-    def get_all_rankings(self) -> List[Ranking]:
+    def get_all_rankings(self) -> list[Ranking]:
         """Get all rankings sorted by sort_rank."""
         cursor = self.conn.execute("SELECT * FROM rankings ORDER BY sort_rank")
         return [Ranking.model_validate(dict(row)) for row in cursor.fetchall()]
@@ -350,7 +411,7 @@ class QueryHelper:
             f"UPDATE pipeline_runs SET {set_clause} WHERE run_id = ?", values
         )
 
-    def get_pipeline_run(self, run_id: str) -> Optional[PipelineRun]:
+    def get_pipeline_run(self, run_id: str) -> PipelineRun | None:
         """Get pipeline run by ID."""
         cursor = self.conn.execute(
             "SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,)
@@ -358,7 +419,7 @@ class QueryHelper:
         row = cursor.fetchone()
         return PipelineRun.model_validate(dict(row)) if row else None
 
-    def get_latest_pipeline_run(self) -> Optional[PipelineRun]:
+    def get_latest_pipeline_run(self) -> PipelineRun | None:
         """Get the most recent pipeline run."""
         cursor = self.conn.execute(
             "SELECT * FROM pipeline_runs ORDER BY start_time DESC LIMIT 1"
@@ -398,7 +459,6 @@ class QueryHelper:
 
 def initialize_database(conn: sqlite3.Connection) -> QueryHelper:
     """Initialize database schema and return query helper."""
-    from .schema import migrate_schema
 
     migrate_schema(conn)
     return QueryHelper(conn)

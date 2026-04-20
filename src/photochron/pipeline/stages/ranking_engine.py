@@ -2,8 +2,23 @@
 Ranking engine stage: Combine signals and produce chronological ranking.
 """
 
-from typing import List
+import json
+from datetime import date
+
+from loguru import logger
+
+from photochron.anchor import ConstraintSet
+from photochron.config import get_config
+from photochron.models import RankingCreate
 from photochron.pipeline import PipelineStage, register_stage
+from photochron.ranking.constraints import apply_constraints
+from photochron.ranking.estimator import (
+    DateEstimate,
+    combine_signals,
+    face_year_estimate,
+    rank_estimates,
+)
+from photochron.store import get_store
 
 
 @register_stage
@@ -15,28 +30,136 @@ class RankingEngineStage(PipelineStage):
         return "ranking_engine"
 
     @property
-    def dependencies(self) -> List[str]:
-        return ["context_layer", "anchor_layer"]  # Needs both context and anchors
+    def dependencies(self) -> list[str]:
+        return ["context_layer", "anchor_layer"]
 
     def run(self, run_id: str, config_hash: str) -> None:
-        """
-        Compute final chronological ranking.
+        """Compute weighted date estimates, apply constraints, and write rankings."""
+        logger.info("Starting ranking engine stage")
 
-        1. Load face ages, context decades, photo medium priors
-        2. Apply weighted combination (45% face, 30% LLM, 10% medium)
-        3. Apply anchor constraints (hard first, then soft)
-        4. Pairwise LLM comparison for ambiguous pairs (max 500)
-        5. Topological sort to final ranking
-        6. Store in rankings table with confidence scores
-        """
-        # TODO: Implement ranking engine
-        print(f"[Ranking Engine] Running stage (placeholder)")
+        config = get_config()
+        pipeline_cfg = config.pipeline
+        weights = {
+            "face": pipeline_cfg.face_age_weight,
+            "llm": pipeline_cfg.llm_decade_weight,
+            "medium": pipeline_cfg.photo_medium_weight,
+        }
 
-        # In real implementation:
-        # 1. Load all signals from database
-        # 2. Compute weighted date estimates
-        # 3. Apply constraints
-        # 4. Handle ambiguous pairs
-        # 5. Compute final sort_rank
-        # 6. Store with confidence and review flags
-        pass
+        constraint_set = self._load_constraint_set(run_id)
+
+        photos = self._load_photo_signals()
+        if not photos:
+            logger.info("No photos available for ranking; stage complete")
+            self.mark_complete(run_id, photos_processed=0)
+            return
+
+        estimates: list[tuple[int, str, DateEstimate]] = []
+        today = date.today()
+        for photo in photos:
+            face_year, face_conf = self._best_face_year(photo, today)
+            estimate = combine_signals(
+                exif_datetime=photo.get("exif_datetime"),
+                face_year=face_year,
+                face_confidence=face_conf,
+                decade=photo.get("decade"),
+                decade_confidence=photo.get("decade_confidence"),
+                photo_medium=photo.get("photo_medium"),
+                photo_medium_confidence=photo.get("photo_medium_confidence"),
+                weights=weights,
+                min_confidence_threshold=pipeline_cfg.min_confidence_threshold,
+            )
+            estimates.append((photo["id"], photo["file_path"], estimate))
+
+        apply_constraints(estimates, constraint_set)
+
+        ranked = rank_estimates(
+            [(photo_id, estimate) for photo_id, _, estimate in estimates]
+        )
+        rank_by_photo: dict[int, int] = dict(ranked)
+
+        self._write_rankings(estimates, rank_by_photo)
+
+        review_count = sum(1 for _, _, est in estimates if est.review_needed)
+        logger.info(
+            "Ranking engine complete: {} photos ranked, {} flagged for review",
+            len(estimates),
+            review_count,
+        )
+        self.mark_complete(run_id, photos_processed=len(estimates))
+
+    def _load_constraint_set(self, run_id: str) -> ConstraintSet:
+        store = get_store()
+        with store.transaction() as conn:
+            helper = store.get_query_helper(conn)
+            raw = helper.get_anchor_constraints_json(run_id)
+        if not raw:
+            logger.info("No anchor constraints stored for run {}; using empty set", run_id)
+            return ConstraintSet()
+        return ConstraintSet.model_validate_json(raw)
+
+    def _load_photo_signals(self) -> list[dict]:
+        """Join photos with their context row for all ranked signals."""
+        store = get_store()
+        with store.transaction() as conn:
+            cursor = conn.execute(
+                """
+                SELECT
+                    p.id, p.file_path, p.exif_datetime,
+                    c.decade, c.decade_confidence,
+                    c.photo_medium, c.photo_medium_confidence
+                FROM photos p
+                LEFT JOIN context c ON p.id = c.photo_id
+                ORDER BY p.id
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def _best_face_year(self, photo: dict, today: date) -> tuple[int | None, float | None]:
+        """Pick the highest-confidence face with a birthday and return (year, conf)."""
+        store = get_store()
+        with store.transaction() as conn:
+            helper = store.get_query_helper(conn)
+            faces = helper.get_faces_with_person_by_photo(photo["id"])
+        best_year = None
+        best_conf: float | None = None
+        for face in faces:
+            if not face.get("birthday") or face.get("age_estimate") is None:
+                continue
+            year = face_year_estimate(today, face["birthday"], face["age_estimate"])
+            if year is None:
+                continue
+            conf = float(face.get("confidence") or 0.0)
+            if best_conf is None or conf > best_conf:
+                best_conf = conf
+                best_year = year
+        return best_year, best_conf
+
+    def _write_rankings(
+        self,
+        estimates: list[tuple[int, str, DateEstimate]],
+        rank_by_photo: dict[int, int],
+    ) -> None:
+        store = get_store()
+        with store.transaction() as conn:
+            helper = store.get_query_helper(conn)
+            helper.clear_rankings()
+            for photo_id, file_path, est in estimates:
+                payload = {
+                    "file_path": file_path,
+                    "year": est.year,
+                    "month": est.month,
+                    "confidence": est.confidence,
+                    "signals": est.signals,
+                    "notes": est.notes,
+                }
+                helper.insert_ranking(
+                    RankingCreate(
+                        photo_id=photo_id,
+                        sort_rank=rank_by_photo[photo_id],
+                        estimated_year=est.year,
+                        estimated_month=est.month,
+                        confidence=float(est.confidence),
+                        review_needed=bool(est.review_needed),
+                        ranking_json=json.dumps(payload),
+                    )
+                )

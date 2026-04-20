@@ -85,6 +85,15 @@ CREATE TABLE IF NOT EXISTS rankings (
     FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
 );
 
+-- Anchor constraints table: serialized ConstraintSet per pipeline run
+CREATE TABLE IF NOT EXISTS anchor_constraints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL UNIQUE,       -- One constraint set per run
+    source_path TEXT,                   -- Path to anchors.yaml
+    constraints_json TEXT NOT NULL,     -- Serialized ConstraintSet
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Pipeline runs table: tracks pipeline execution history
 CREATE TABLE IF NOT EXISTS pipeline_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,6 +129,8 @@ CREATE INDEX IF NOT EXISTS idx_context_uncertainty_flag ON context (uncertainty_
 CREATE INDEX IF NOT EXISTS idx_rankings_photo_id ON rankings (photo_id);
 CREATE INDEX IF NOT EXISTS idx_rankings_sort_rank ON rankings (sort_rank);
 CREATE INDEX IF NOT EXISTS idx_rankings_confidence ON rankings (confidence);
+
+CREATE INDEX IF NOT EXISTS idx_anchor_constraints_run_id ON anchor_constraints (run_id);
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_run_id ON pipeline_runs (run_id);
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_start_time ON pipeline_runs (start_time);
