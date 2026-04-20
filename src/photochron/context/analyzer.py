@@ -6,7 +6,6 @@ of photos for decade estimation, season detection, event hints, and photo medium
 identification using the OllamaClient.
 """
 
-import logging
 import time
 import random
 import re
@@ -14,6 +13,8 @@ from typing import Optional, Dict, Any, List, Literal, Callable, TypeVar
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+
+from loguru import logger
 
 T = TypeVar("T")
 
@@ -38,8 +39,6 @@ except ImportError:
 
     OLLAMA_EXCEPTIONS = (_DummyOllamaException,)
     HAS_OLLAMA_EXCEPTIONS = False
-
-logger = logging.getLogger(__name__)
 
 
 class AnalysisStrategy(str, Enum):
@@ -984,7 +983,7 @@ def get_context_analyzer(
 
         # Update config if provided
         if config is not None:
-            logger.info("Updating existing ContextAnalyzer configuration: %s", config)
+            logger.info("Updating existing ContextAnalyzer configuration: {}", config)
             _default_analyzer.config = config
 
     return _default_analyzer

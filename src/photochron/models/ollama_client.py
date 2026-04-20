@@ -7,7 +7,6 @@ for vision LLM analysis of photos.
 
 import json
 import time
-import logging
 import base64
 import os
 import re
@@ -18,9 +17,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 import ollama
+from loguru import logger
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
-
-logger = logging.getLogger(__name__)
 
 # Maximum file size for base64 encoding (10MB)
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB in bytes

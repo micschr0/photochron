@@ -4,11 +4,9 @@ InsightFace wrapper for face detection, embedding extraction, and age estimation
 Encapsulates the InsightFace model and provides a clean interface for the face layer.
 """
 
-import logging
 from typing import List, Tuple, Optional, Any
 import numpy as np
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class InsightFaceWrapper:

@@ -30,6 +30,18 @@ def main(
         help="Show version and exit",
         is_eager=True,
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable DEBUG-level logging",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Only show WARNING and above",
+    ),
 ) -> None:
     """
     PhotoChron - Sort family photos chronologically using AI.
@@ -41,6 +53,20 @@ def main(
 
         typer.echo(f"PhotoChron v{__version__}")
         raise typer.Exit()
+
+    from photochron.config import get_config
+    from photochron.logging_config import setup_logging
+
+    level_override = None
+    if verbose and quiet:
+        typer.echo("Error: --verbose and --quiet are mutually exclusive", err=True)
+        raise typer.Exit(2)
+    if verbose:
+        level_override = "DEBUG"
+    elif quiet:
+        level_override = "WARNING"
+
+    setup_logging(get_config().logging, level_override=level_override)
 
 
 # Export for __main__.py

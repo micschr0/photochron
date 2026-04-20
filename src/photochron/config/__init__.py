@@ -18,6 +18,7 @@ from .models import (
     ConfigIngestion,
     ConfigFace,
     ConfigContext,
+    ConfigLogging,
 )
 
 
@@ -181,6 +182,7 @@ def migrate_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
             "face",
             "pipeline",
             "context",
+            "logging",
         }
         keys_to_remove = [k for k in config_data.keys() if k not in known_keys]
         for key in keys_to_remove:
@@ -202,6 +204,8 @@ def migrate_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
             config_data["pipeline"] = {}
         if "context" not in config_data:
             config_data["context"] = {}
+        if "logging" not in config_data:
+            config_data["logging"] = {}
 
     # Add future migrations here as elif version == "1.0": ...
 

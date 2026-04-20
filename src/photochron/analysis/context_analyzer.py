@@ -6,12 +6,13 @@ of photos for decade estimation, season detection, event hints, and photo medium
 identification using the OllamaClient.
 """
 
-import logging
 import time
 import random
 from typing import Optional, Dict, Any, List, Callable, TypeVar
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from loguru import logger
 
 T = TypeVar("T")
 
@@ -21,8 +22,6 @@ from photochron.models.ollama_client import (
     ContextAnalysisResult,
     ModelType,
 )
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass

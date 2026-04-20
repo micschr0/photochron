@@ -9,6 +9,8 @@ from typing import Dict, List, Optional, Type
 from datetime import datetime
 import uuid
 
+from loguru import logger
+
 from photochron.store import get_store
 from photochron.config import get_config
 
@@ -202,12 +204,17 @@ class PipelineRunner:
             if stage is None:
                 raise RuntimeError(f"Stage '{stage_name}' not found in registry")
 
-            # Check if stage should run
-            if stage.should_run(run_id):
+            if not stage.should_run(run_id):
+                continue
+
+            with logger.contextualize(run_id=run_id, stage=stage_name):
+                logger.info("Stage starting")
                 try:
                     stage.run(run_id, "placeholder")
                     stage.mark_complete(run_id)
+                    logger.info("Stage completed")
                 except Exception as e:
+                    logger.exception("Stage failed: {}", e)
                     stage.mark_failed(run_id, str(e))
                     raise
 

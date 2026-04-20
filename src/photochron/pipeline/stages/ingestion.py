@@ -7,17 +7,14 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
-import logging
 
+from loguru import logger
 from PIL import Image
 import imagehash
 import piexif
 from photochron.pipeline import PipelineStage, register_stage
 from photochron.config import get_config
 from photochron.store import get_store
-
-
-logger = logging.getLogger(__name__)
 
 
 @register_stage

@@ -3,11 +3,12 @@ Context layer stage: Analyze photo context using vision LLM.
 """
 
 import json
-import logging
 import sqlite3
 import time
 from typing import List, Optional, Any, Dict
 from pathlib import Path
+
+from loguru import logger
 
 try:
     import psutil
@@ -23,8 +24,6 @@ from photochron.store import get_store
 from photochron.context.analyzer import ContextAnalyzer, ContextAnalyzerConfig
 from photochron.models.ollama_client import OllamaConfig, ModelType
 from photochron.models import ContextCreate
-
-logger = logging.getLogger(__name__)
 
 
 @register_stage

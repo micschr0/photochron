@@ -7,10 +7,24 @@ import sqlite3
 from pathlib import Path
 from typing import Generator
 import pytest
+from loguru import logger as _loguru_logger
 
 from photochron.store import DatabaseStore, get_store, close_store
 from photochron.config import Config, ConfigPaths, ConfigModels, ConfigPipeline
 from photochron.store.schema import create_schema
+
+
+@pytest.fixture
+def caplog(caplog):
+    """Route loguru records into pytest's caplog handler."""
+    handler_id = _loguru_logger.add(
+        caplog.handler,
+        format="{message}",
+        level=0,
+        filter=lambda record: record["level"].no >= caplog.handler.level,
+    )
+    yield caplog
+    _loguru_logger.remove(handler_id)
 
 
 @pytest.fixture

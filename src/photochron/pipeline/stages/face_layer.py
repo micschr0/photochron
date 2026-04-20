@@ -2,21 +2,18 @@
 Face layer stage: Detect faces, compute embeddings, estimate ages.
 """
 
-import logging
 import sqlite3
 from typing import List, Optional, Any, Dict, Tuple
 from pathlib import Path
 import numpy as np
 
+from loguru import logger
 from PIL import Image
 from photochron.pipeline import PipelineStage, register_stage
 from photochron.config import get_config
 from photochron.store import get_store
 from photochron.face.insightface_wrapper import InsightFaceWrapper
 from photochron.models import FaceCreate
-
-
-logger = logging.getLogger(__name__)
 
 
 @register_stage

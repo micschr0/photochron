@@ -221,6 +221,56 @@ class ConfigContext(BaseModel):
         return self
 
 
+class ConfigLogging(BaseModel):
+    """Logging configuration."""
+
+    level: str = Field(
+        "INFO",
+        description="Log level for console output (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+    )
+    file_path: Optional[str] = Field(
+        ".photochron/logs/photochron.log",
+        description="Path to log file. Set to null to disable file logging.",
+    )
+    file_level: str = Field(
+        "DEBUG",
+        description="Log level for file output (typically more verbose than console)",
+    )
+    rotation: str = Field(
+        "10 MB",
+        description="Log file rotation trigger (e.g. '10 MB', '1 day', '00:00')",
+    )
+    retention: str = Field(
+        "7 days",
+        description="How long to keep rotated log files",
+    )
+    json_format: bool = Field(
+        False,
+        description="Emit logs as JSON (machine-readable). Applies to file sink.",
+    )
+    backtrace: bool = Field(
+        True,
+        description="Show extended tracebacks with variable values on exceptions",
+    )
+    diagnose: bool = Field(
+        False,
+        description="Show variable values in tracebacks. Set False in production to avoid leaking sensitive data.",
+    )
+
+    @model_validator(mode="after")
+    def validate_levels(self) -> "ConfigLogging":
+        """Validate log level strings."""
+        valid = {"TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"}
+        for field in ("level", "file_level"):
+            value = getattr(self, field).upper()
+            if value not in valid:
+                raise ValueError(
+                    f"{field} must be one of {sorted(valid)}, got '{value}'"
+                )
+            setattr(self, field, value)
+        return self
+
+
 class Config(BaseModel):
     """Root configuration model."""
 
@@ -231,6 +281,7 @@ class Config(BaseModel):
     face: ConfigFace = Field(default_factory=ConfigFace)
     pipeline: ConfigPipeline = Field(default_factory=ConfigPipeline)
     context: ConfigContext = Field(default_factory=ConfigContext)
+    logging: ConfigLogging = Field(default_factory=ConfigLogging)
 
     model_config = ConfigDict(
         extra="forbid",  # Prevent extra fields
