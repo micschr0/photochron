@@ -97,6 +97,48 @@ The Face layer (Stage 2) detects faces in downsampled photos, computes 512‑dim
 
 **Non‑destructive operation**: Only reads downsampled images from cache; never modifies original files.
 
+### Context Layer Details
+
+The Context layer (Stage 3) analyzes each downsampled photo with a local vision LLM (via Ollama/MLX) to estimate the decade it was taken, detect seasonal hints, identify events, and classify the photo medium (e.g. print scan, Polaroid, digital). Results are written to the `context` table with per-field confidence scores.
+
+- **Vision LLM analysis**: Sends downsampled images to Ollama with a structured JSON prompt contract (never free text).
+- **Decade estimate**: Returns a decade bucket (e.g. `1985-1990`) plus `decade_confidence` and optional alternative decades.
+- **Season / event / medium**: Extracts season hints, event hints, and photo medium with individual confidence scores.
+- **Health check & graceful degradation**: At init, checks Ollama reachability and model availability; enters degraded mode (skips stage) if neither primary nor fallback model is usable.
+- **Batch processing**: Photos are processed in configurable batch sizes; progress is logged per batch and every 10 photos with percentage completion.
+- **Memory guards**: Before each batch, available system memory is checked; batches are skipped and retried if memory falls below the critical threshold.
+- **Retry & fallback**: Transient LLM failures are retried with configurable delay; analyzer falls back from primary to fallback model automatically.
+- **Minimal-store on failure**: When analysis fails completely, a minimal record with `uncertainty_flag=True` is stored (configurable) so the photo is not silently dropped.
+
+**Typical usage**:
+```bash
+# Run only the context layer for new photos
+python -m photochron run --stages context_layer
+
+# Re-run the context layer from scratch
+python -m photochron rerun --stage context_layer
+```
+
+**Configuration options** (`config.yaml` → `context:`):
+- `ollama_host`: Ollama server URL; default: `http://localhost:11434`
+- `ollama_timeout`: Request timeout in seconds; default: `300`
+- `max_retries`: Max retry attempts on LLM failure; default: `3`
+- `retry_delay`: Delay between retries in seconds; default: `2.0`
+- `primary_model`: Primary vision LLM; default: `llava-next:7b`
+- `fallback_model`: Fallback vision LLM; default: `moondream2`
+- `batch_size`: Number of photos per batch; default: `1`
+- `min_decade_confidence`: Minimum confidence for decade results; default: `0.3`
+- `min_season_confidence`: Minimum confidence for season results; default: `0.4`
+- `use_fallback_on_failure`: Enable fallback analysis strategies; default: `true`
+- `store_minimal_on_complete_failure`: Store minimal row when analysis fails; default: `true`
+- `memory_warning_threshold_mb`: Warning threshold for low memory; default: `100`
+- `memory_critical_threshold_mb`: Critical threshold to skip batch; default: `50`
+- `memory_retry_delay_seconds`: Wait time before retrying after critical memory; default: `30`
+
+See `docs/context-layer.md` for architecture details and troubleshooting, and `docs/ollama-setup.md` for installing Ollama and pulling the required models.
+
+**Non‑destructive operation**: Only reads downsampled images from cache; never writes to original files or input directory.
+
 Key Design Decisions (WHY)
 
 - **InsightFace over DeepFace**: better accuracy on low-resolution historical photos

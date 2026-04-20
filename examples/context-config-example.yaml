@@ -1,0 +1,126 @@
+# Example PhotoChron configuration — Context Layer
+#
+# This file documents every option under the `context:` section of config.yaml.
+# Copy the `context:` block into your project's config.yaml and tweak values
+# to match your hardware and model availability.
+#
+# See also:
+#   - docs/context-layer.md  — architecture, progress reporting, troubleshooting
+#   - docs/ollama-setup.md   — installing Ollama and pulling models
+#   - src/photochron/config/models.py — Pydantic schema (ConfigContext)
+
+version: "1.0"
+
+context:
+  # ------------------------------------------------------------------
+  # Ollama server
+  # ------------------------------------------------------------------
+
+  # Base URL of the local Ollama server. Only point this at a trusted
+  # private host — biometric family data must not leave your network.
+  ollama_host: "http://localhost:11434"
+
+  # Request timeout in seconds. Raise this on slower hardware or when
+  # running the larger 7B model on CPU.
+  ollama_timeout: 300
+
+  # ------------------------------------------------------------------
+  # Models
+  # ------------------------------------------------------------------
+
+  # Preferred vision LLM. Higher quality, larger RAM footprint.
+  # Must match an Ollama model tag visible in `ollama list`.
+  primary_model: "llava-next:7b"
+
+  # Fallback vision LLM used when the primary model is unavailable,
+  # fails repeatedly, or when memory pressure forces a downgrade.
+  fallback_model: "moondream2"
+
+  # ------------------------------------------------------------------
+  # Retry behaviour
+  # ------------------------------------------------------------------
+
+  # Maximum retry attempts for transient LLM failures (connection
+  # errors, timeouts, malformed JSON). Set to 0 to disable retries.
+  max_retries: 3
+
+  # Base delay in seconds between retries. Jitter is applied on top
+  # to avoid thundering-herd retry storms.
+  retry_delay: 2.0
+
+  # ------------------------------------------------------------------
+  # Batching and progress
+  # ------------------------------------------------------------------
+
+  # Number of photos processed per batch. Inside a batch, photos are
+  # still sent to Ollama sequentially; this controls how often memory
+  # checks and progress percentages are emitted.
+  batch_size: 1
+
+  # ------------------------------------------------------------------
+  # Confidence thresholds
+  # ------------------------------------------------------------------
+
+  # Minimum confidence for decade estimates. Below this, the
+  # uncertainty flag is raised on the result.
+  min_decade_confidence: 0.3
+
+  # Minimum confidence for season estimates. Below this, the season
+  # is still stored but flagged as low confidence.
+  min_season_confidence: 0.4
+
+  # ------------------------------------------------------------------
+  # Fallback strategies
+  # ------------------------------------------------------------------
+
+  # When a structured analysis fails, try fallback prompts (simple /
+  # uncertainty / multi-hypothesis) before giving up.
+  use_fallback_on_failure: true
+
+  # When all strategies fail, still insert a minimal context row with
+  # uncertainty_flag=true rather than silently dropping the photo.
+  # Keeps the pipeline deterministic and re-runnable.
+  store_minimal_on_complete_failure: true
+
+  # ------------------------------------------------------------------
+  # Memory safety (requires `psutil` — otherwise these are ignored)
+  # ------------------------------------------------------------------
+
+  # Warn in the log if available system memory drops below this value
+  # before starting a batch. Processing continues.
+  memory_warning_threshold_mb: 100
+
+  # Skip the current batch entirely and wait `memory_retry_delay_seconds`
+  # if available memory falls below this threshold. Must be strictly
+  # less than `memory_warning_threshold_mb`.
+  memory_critical_threshold_mb: 50
+
+  # Seconds to sleep after a critical-memory event before attempting
+  # the next batch.
+  memory_retry_delay_seconds: 30
+
+# ----------------------------------------------------------------------
+# Preset: low-RAM / older hardware
+# ----------------------------------------------------------------------
+#
+# context:
+#   primary_model: "moondream2"
+#   fallback_model: "moondream2"
+#   batch_size: 1
+#   ollama_timeout: 600
+#   memory_warning_threshold_mb: 200
+#   memory_critical_threshold_mb: 100
+#   memory_retry_delay_seconds: 60
+#
+# ----------------------------------------------------------------------
+# Preset: maximum quality (plenty of RAM, Apple Silicon with MLX)
+# ----------------------------------------------------------------------
+#
+# context:
+#   primary_model: "llava-next:7b"
+#   fallback_model: "moondream2"
+#   batch_size: 4
+#   max_retries: 5
+#   ollama_timeout: 600
+#   min_decade_confidence: 0.4
+#   min_season_confidence: 0.5
