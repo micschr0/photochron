@@ -1,0 +1,67 @@
+# PhotoChron Anchors File
+# User-provided anchor data for chronological sorting
+
+# Persons section: Known people with birthdays
+# Each person has an id (used internally), name (display), and birthday (YYYY-MM-DD)
+persons:
+  - id: person_mama
+    name: "Mama"
+    birthday: "1983-03-15"
+  
+  - id: person_papa  
+    name: "Papa"
+    birthday: "1980-07-22"
+  
+  - id: person_child1
+    name: "Anna"
+    birthday: "2010-11-05"
+  
+  # Add more persons as needed
+  # - id: person_grandma
+  #   name: "Grandma"
+  #   birthday: "1955-02-10"
+
+# Events section: Known events with dates and constraints
+# Each event can have hard or soft constraints
+events:
+  - name: "Move to New City"
+    date: "1991-08-01"
+    type: hard  # hard constraints must be satisfied, soft constraints are preferences
+    photos_after:  # List of photos that must be AFTER this date
+      - "IMG_042.jpg"
+      - "DSC_123.jpg"
+  
+  - name: "Family Vacation"
+    date: "2005-06-15"
+    type: soft  # Soft constraints guide ranking but can be violated
+    photos_before:  # Photos that should be BEFORE this date
+      - "vacation_01.jpg"
+  
+  # Add more events as needed
+  # - name: "Wedding"
+  #   date: "2018-09-08"
+  #   type: hard
+  #   photos_after: ["wedding_ceremony.jpg"]
+
+# Known dates section: Photos with partially known dates
+# Useful when you know month/year but not exact day
+known_dates:
+  - file: "Christmas_photo.jpg"
+    month: 12  # December (1-12)
+    year: 1998  # Optional: if omitted, year will be estimated
+    type: soft
+  
+  - file: "summer_beach.jpg" 
+    month: 7  # July
+    # year: 2002  # Year can be estimated from other signals
+    type: soft
+  
+  # Add more known dates as needed
+  # - file: "birthday_party.jpg"
+  #   month: 5
+  #   year: 2015
+  #   type: hard
+
+# Note: File names in photos_after, photos_before, and file fields should match
+# the original file names (without path). The system will match them based on
+# the file name during ingestion.

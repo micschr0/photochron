@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "scanned_at": "2026-04-13T13:10:47.031Z",
+  "files": [
+    {
+      "path": ".opencode/plugins/opencode-swarm/package/README.md",
+      "title": "OpenCode Swarm",
+      "summary": "<div align=\"center\"> **Your AI writes the code. Swarm makes sure it actually works.** [![npm version](https://img.shields.io/npm/v/opencode-swarm?color=brightgreen&label=npm)](https://www.npmjs.com...",
+      "lines": 1665,
+      "mtime": 1776076915160.2534
+    },
+    {
+      "path": ".pytest_cache/README.md",
+      "title": "pytest cache directory #",
+      "summary": "This directory contains data from the pytest's cache plugin, which provides the `--lf` and `--ff` options, as well as the `cache` fixture. **Do not** commit this to version control. See [the docs](...",
+      "lines": 9,
+      "mtime": 1776034186162.8718
+    },
+    {
+      "path": ".venv/lib/python3.13/site-packages/onnx/backend/test/data/light/README.md",
+      "title": "Light models",
+      "summary": "<!-- Copyright (c) ONNX Project Contributors SPDX-License-Identifier: Apache-2.0 --> The models in this folder were created by replacing all float initializers by nodes `ConstantOfShape` with funct...",
+      "lines": 17,
+      "mtime": 1776061519839.051
+    },
+    {
+      "path": ".venv/lib/python3.13/site-packages/sklearn/externals/array_api_compat/README.md",
+      "title": "README.md",
+      "summary": "Update this directory using maint_tools/vendor_array_api_compat.sh",
+      "lines": 2,
+      "mtime": 1776061515492.9014
+    },
+    {
+      "path": ".venv/lib/python3.13/site-packages/sklearn/externals/array_api_extra/README.md",
+      "title": "README.md",
+      "summary": "Update this directory using maint_tools/vendor_array_api_extra.sh",
+      "lines": 2,
+      "mtime": 1776061515362.8865
+    },
+    {
+      "path": ".venv/lib64/python3.13/site-packages/onnx/backend/test/data/light/README.md",
+      "title": "Light models",
+      "summary": "<!-- Copyright (c) ONNX Project Contributors SPDX-License-Identifier: Apache-2.0 --> The models in this folder were created by replacing all float initializers by nodes `ConstantOfShape` with funct...",
+      "lines": 17,
+      "mtime": 1776061519839.051
+    },
+    {
+      "path": ".venv/lib64/python3.13/site-packages/sklearn/externals/array_api_compat/README.md",
+      "title": "README.md",
+      "summary": "Update this directory using maint_tools/vendor_array_api_compat.sh",
+      "lines": 2,
+      "mtime": 1776061515492.9014
+    },
+    {
+      "path": ".venv/lib64/python3.13/site-packages/sklearn/externals/array_api_extra/README.md",
+      "title": "README.md",
+      "summary": "Update this directory using maint_tools/vendor_array_api_extra.sh",
+      "lines": 2,
+      "mtime": 1776061515362.8865
+    },
+    {
+      "path": "CLAUDE.md",
+      "title": "PhotoChron – CLAUDE.md",
+      "summary": "What is this project? PhotoChron is a local-first CLI tool that sorts digitized family photos without timestamps into chronological order using AI-based age estimation, visual context analysis, and...",
+      "lines": 121,
+      "mtime": 1776066850135.82
+    }
+  ]
+}

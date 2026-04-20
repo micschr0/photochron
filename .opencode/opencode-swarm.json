@@ -1,0 +1,46 @@
+{
+  "agents": {
+    "architect": {
+      "model": "deepseek/deepseek-reasoner"
+    },
+    "coder": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "reviewer": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "critic": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "test_engineer": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "explorer": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "critic_sounding_board": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "critic_drift_verifier": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "docs": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "designer": {
+      "model": "deepseek/deepseek-chat"
+    },
+    "sme": {
+      "model": "deepseek/deepseek-chat"
+    }
+  },
+  "guardrails": {
+    "max_tool_calls": 80,
+    "max_duration_minutes": 15
+  },
+  "knowledge": {
+    "enabled": true,
+    "hive_enabled": true
+  },
+  "mode": "balanced"
+}

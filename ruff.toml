@@ -1,0 +1,5 @@
+# Ruff configuration (also configured in pyproject.toml)
+# This file exists for tooling that expects ruff.toml
+
+# Import configuration from pyproject.toml
+extend = "pyproject.toml"

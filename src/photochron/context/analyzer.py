@@ -1,0 +1,990 @@
+"""
+Context analyzer for photo analysis using vision LLM.
+
+This module provides the ContextAnalyzer class which orchestrates the analysis
+of photos for decade estimation, season detection, event hints, and photo medium
+identification using the OllamaClient.
+"""
+
+import logging
+import time
+import random
+import re
+from typing import Optional, Dict, Any, List, Literal, Callable, TypeVar
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+
+T = TypeVar("T")
+
+from photochron.models.ollama_client import (
+    OllamaClient,
+    OllamaConfig,
+    ContextAnalysisResult,
+    ModelType,
+)
+
+# Import ollama exceptions for better error handling
+try:
+    from ollama import RequestError, ResponseError
+
+    OLLAMA_EXCEPTIONS = (RequestError, ResponseError)
+    HAS_OLLAMA_EXCEPTIONS = True
+except ImportError:
+    # Fallback if ollama is not installed (should not happen in normal usage)
+    # Create dummy exception classes that will never match real exceptions
+    class _DummyOllamaException(Exception):
+        pass
+
+    OLLAMA_EXCEPTIONS = (_DummyOllamaException,)
+    HAS_OLLAMA_EXCEPTIONS = False
+
+logger = logging.getLogger(__name__)
+
+
+class AnalysisStrategy(str, Enum):
+    """Strategy for context analysis."""
+
+    DEFAULT = "default"
+    """Standard analysis with primary model fallback."""
+
+    AGGRESSIVE = "aggressive"
+    """Try multiple models and prompts for best results."""
+
+    CONSERVATIVE = "conservative"
+    """Only return results with high confidence."""
+
+    FAST = "fast"
+    """Use simpler prompts and skip retries for speed."""
+
+
+class FallbackStrategy(str, Enum):
+    """Strategy for handling analysis failures."""
+
+    NONE = "none"
+    """No fallback - return None on failure."""
+
+    SIMPLE = "simple"
+    """Use simple fallback prompt for basic analysis."""
+
+    UNCERTAINTY = "uncertainty"
+    """Use uncertainty handling prompt with low confidence."""
+
+    MULTI_HYPOTHESIS = "multi_hypothesis"
+    """Generate multiple hypotheses when uncertain."""
+
+
+@dataclass
+class ContextAnalyzerConfig:
+    """Configuration for ContextAnalyzer."""
+
+    strategy: AnalysisStrategy = AnalysisStrategy.DEFAULT
+    """Analysis strategy to use."""
+
+    fallback_strategy: FallbackStrategy = FallbackStrategy.SIMPLE
+    """Fallback strategy for handling failures."""
+
+    min_decade_confidence: float = 0.3
+    """Minimum confidence threshold for decade estimates (0.0-1.0)."""
+
+    min_season_confidence: float = 0.4
+    """Minimum confidence threshold for season estimates (0.0-1.0)."""
+
+    min_event_confidence: float = 0.5
+    """Minimum confidence threshold for event hints (0.0-1.0)."""
+
+    enable_retries: bool = True
+    """Whether to enable retries on analysis failures."""
+
+    max_retries: int = 2
+    """Maximum number of retry attempts."""
+
+    use_base64: bool = False
+    """Whether to encode images as base64 for Ollama."""
+
+    prompt_templates: List[str] = field(
+        default_factory=lambda: [
+            "default",
+            "detailed_decade",
+            "season_focused",
+            "event_detection",
+        ]
+    )
+    """Ordered list of prompt templates to try."""
+
+    model_priority: List[ModelType] = field(
+        default_factory=lambda: [
+            ModelType.LLAVA_NEXT_7B,
+            ModelType.MOONDREAM2,
+        ]
+    )
+    """Ordered list of models to try."""
+
+
+class ContextAnalyzer:
+    """
+    Analyzer for photo context using vision LLM.
+
+    This class orchestrates the analysis of photos for:
+    - Decade estimation with confidence scores
+    - Season detection (spring, summer, autumn, winter)
+    - Event hints (wedding, birthday, graduation, etc.)
+    - Photo medium identification (digital, print_scan, polaroid, etc.)
+
+    The analyzer uses configurable fallback strategies and can try multiple
+    models and prompts to achieve the best results.
+    """
+
+    def __init__(
+        self,
+        ollama_client: Optional[OllamaClient] = None,
+        config: Optional[ContextAnalyzerConfig] = None,
+        ollama_config: Optional[OllamaConfig] = None,
+    ) -> None:
+        """
+        Initialize the context analyzer.
+
+        Args:
+            ollama_client: Pre-configured OllamaClient instance. If None,
+                a new client will be created.
+            config: ContextAnalyzer configuration. If None, defaults are used.
+            ollama_config: OllamaClient configuration. Only used if
+                ollama_client is None.
+        """
+        self.config = config or ContextAnalyzerConfig()
+
+        # Initialize Ollama client
+        if ollama_client is None:
+            ollama_config = ollama_config or OllamaConfig()
+            # Sync retry settings from analyzer config to ollama config
+            if not self.config.enable_retries:
+                ollama_config.max_retries = 0  # Disable retries in OllamaClient
+            else:
+                ollama_config.max_retries = self.config.max_retries
+            self.ollama_client = OllamaClient(ollama_config)
+            # Try to connect
+            if not self.ollama_client.connect():
+                logger.warning("Ollama client failed to connect on initialization")
+        else:
+            self.ollama_client = ollama_client
+            # Note: If user provides their own OllamaClient, we can't modify its retry config
+            # The retry wrapper will handle retries at the analyzer level if needed
+
+        logger.info(
+            f"Initialized ContextAnalyzer with strategy: {self.config.strategy}, "
+            f"fallback: {self.config.fallback_strategy}"
+        )
+
+    def _is_model_not_found_error(self, error_message: str) -> bool:
+        """
+        Check if an error message indicates a model not found error.
+
+        Args:
+            error_message: The error message to check.
+
+        Returns:
+            True if the error indicates a model not found, False otherwise.
+        """
+        # Patterns to match model not found errors
+        # Some are literal strings, some are regex patterns
+        patterns = [
+            r"model not found",
+            r"model does not exist",
+            r"no such model",
+            r"unable to find model",
+            r"model ['\"][^'\"]+['\"] not found",  # Model name in quotes
+            r"model [^ ]+ not found",  # Model name without quotes
+            r"pull model .* first",  # Suggestion to pull model
+            r"model .* is not available",  # Model unavailable
+        ]
+
+        error_lower = error_message.lower()
+        for pattern in patterns:
+            if re.search(pattern, error_lower):
+                return True
+        return False
+
+    def _extract_model_name_from_error(self, error_message: str) -> str:
+        """
+        Extract model name from error message.
+
+        Args:
+            error_message: The error message containing model name.
+
+        Returns:
+            Extracted model name, or "unknown" if not found.
+        """
+        error_lower = error_message.lower()
+
+        # Try to extract model name from various patterns
+        patterns = [
+            # Specific patterns first
+            r"model ['\"]([^'\"]+)['\"]",  # Model name in quotes: model "llava-next:7b" not found
+            r"pull model ([^ ]+) first",  # Model name after "pull model": pull model llava-next:7b first
+            r"model (?:does not exist|not found|unavailable)[ :]+([^ ,]+)",  # Handle "model does not exist: llava-next:7b"
+            r"model: ([^ ,]+)",  # Model name after "model:" (with colon): model: llava-next:7b
+            r"model ([^ ]+) is not available",  # Model name before "is not available": model llava-next:7b is not available
+            # More general patterns (careful with these)
+            r"model ([^ ]+) not found",  # Model name without quotes after "model": model llava-next:7b not found
+            r"model ([a-zA-Z0-9][^ ]*[:/][^ ]*)",  # Model name containing : or / (like llava-next:7b)
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, error_lower)
+            if match:
+                model_name = match.group(1)
+                # Clean up the model name
+                model_name = model_name.strip("'\"")
+                return model_name
+
+        # If no pattern matches, try to find any word after "model"
+        # that looks like a model name (contains : or / or common model patterns)
+        words = error_lower.split()
+        for i, word in enumerate(words):
+            if word == "model" and i + 1 < len(words):
+                next_word = words[i + 1]
+                # Check if it looks like a model name
+                if (
+                    ":" in next_word
+                    or "/" in next_word
+                    or "llava" in next_word
+                    or "moondream" in next_word
+                ):
+                    return next_word.strip("'\"")
+
+        return "unknown"
+
+    def _handle_operation_exception(
+        self,
+        exception: Exception,
+        operation_name: str,
+        attempt: int,
+        is_final: bool = False,
+    ) -> None:
+        """
+        Handle an exception from an operation with consistent logging.
+
+        Args:
+            exception: The exception that was raised.
+            operation_name: Name of the operation for logging.
+            attempt: The attempt number (0-indexed).
+            is_final: Whether this is the final attempt (no more retries).
+        """
+        error_message = str(exception)
+        attempt_display = attempt + 1  # Convert to 1-indexed for display
+
+        # Check if it's a model not found error
+        is_model_not_found = self._is_model_not_found_error(error_message)
+
+        if isinstance(
+            exception,
+            (TimeoutError, ConnectionError, ConnectionRefusedError, OSError),
+        ):
+            # Network/timeout specific errors
+            log_level = "error" if is_final else "warning"
+            log_message = (
+                f"{operation_name} failed on attempt {attempt_display}: "
+                f"Ollama connection failed: {exception} - check if Ollama server is running"
+            )
+            if is_final:
+                log_message = (
+                    f"{operation_name} failed after {attempt_display} attempts: "
+                    f"Ollama connection failed: {exception} - check if Ollama server is running"
+                )
+            getattr(logger, log_level)(log_message)
+
+        elif HAS_OLLAMA_EXCEPTIONS and isinstance(exception, OLLAMA_EXCEPTIONS):
+            # Ollama-specific exceptions (RequestError, ResponseError)
+            if is_model_not_found:
+                model_name = self._extract_model_name_from_error(error_message)
+                log_level = "error" if is_final else "warning"
+                log_message = (
+                    f"{operation_name} failed on attempt {attempt_display}: "
+                    f"Model '{model_name}' not found or cannot be loaded: {exception} - "
+                    f"verify model is pulled with 'ollama pull {model_name}'"
+                )
+                if is_final:
+                    log_message = (
+                        f"{operation_name} failed after {attempt_display} attempts: "
+                        f"Model '{model_name}' not found or cannot be loaded: {exception} - "
+                        f"verify model is pulled with 'ollama pull {model_name}'"
+                    )
+                getattr(logger, log_level)(log_message)
+            else:
+                # Other ollama-specific error
+                log_level = "error" if is_final else "warning"
+                log_message = (
+                    f"{operation_name} failed on attempt {attempt_display}: "
+                    f"Ollama error: {exception}"
+                )
+                if is_final:
+                    log_message = (
+                        f"{operation_name} failed after {attempt_display} attempts: "
+                        f"Ollama error: {exception}"
+                    )
+                getattr(logger, log_level)(log_message)
+
+        elif is_model_not_found:
+            # Model not found error from other exception types
+            model_name = self._extract_model_name_from_error(error_message)
+            log_level = "error" if is_final else "warning"
+            log_message = (
+                f"{operation_name} failed on attempt {attempt_display}: "
+                f"Model '{model_name}' not found or cannot be loaded: {exception} - "
+                f"verify model is pulled with 'ollama pull {model_name}'"
+            )
+            if is_final:
+                log_message = (
+                    f"{operation_name} failed after {attempt_display} attempts: "
+                    f"Model '{model_name}' not found or cannot be loaded: {exception} - "
+                    f"verify model is pulled with 'ollama pull {model_name}'"
+                )
+            getattr(logger, log_level)(log_message)
+
+        else:
+            # Generic error
+            log_level = "error" if is_final else "warning"
+            log_message = (
+                f"{operation_name} failed on attempt {attempt_display}: {exception}"
+            )
+            if is_final:
+                log_message = f"{operation_name} failed after {attempt_display} attempts: {exception}"
+            getattr(logger, log_level)(log_message)
+
+    def _with_retry(
+        self, operation: Callable[[], Optional[T]], operation_name: str
+    ) -> Optional[T]:
+        """
+        Execute an operation with retry logic based on analyzer configuration.
+
+        Args:
+            operation: The operation to execute (returns Optional[T]).
+            operation_name: Name of the operation for logging.
+
+        Returns:
+            The result of the operation, or None if all retries failed.
+        """
+        if not self.config.enable_retries:
+            # Execute without retries but still catch and log exceptions
+            try:
+                return operation()
+            except Exception as e:
+                self._handle_operation_exception(
+                    e, operation_name, attempt=0, is_final=True
+                )
+                return None
+
+        last_exception = None
+        for attempt in range(self.config.max_retries + 1):  # +1 for initial attempt
+            try:
+                result = operation()
+                if result is not None:
+                    if attempt > 0:
+                        logger.info(
+                            f"{operation_name} succeeded on attempt {attempt + 1}"
+                        )
+                    return result
+                else:
+                    # Operation returned None (not an exception)
+                    logger.debug(
+                        f"{operation_name} returned None on attempt {attempt + 1}"
+                    )
+
+            except Exception as e:
+                # Handle all exceptions with the helper method
+                last_exception = e
+                is_final = attempt == self.config.max_retries
+                self._handle_operation_exception(e, operation_name, attempt, is_final)
+
+            # Check if we should retry
+            if attempt < self.config.max_retries:
+                # Exponential backoff with jitter
+                base_delay = 2.0 * (2**attempt)  # 2, 4, 8 seconds
+                jitter = random.uniform(-0.5, 0.5)  # ±0.5 seconds jitter
+                delay = max(0.5, base_delay + jitter)  # Minimum 0.5 seconds
+
+                logger.debug(f"Retrying {operation_name} in {delay:.2f} seconds...")
+                time.sleep(delay)
+
+        # All retries exhausted
+        if last_exception:
+            # Final error already logged by _handle_operation_exception with is_final=True
+            pass
+        else:
+            logger.error(
+                f"{operation_name} returned None after {self.config.max_retries + 1} attempts"
+            )
+
+        return None
+
+    def analyze(
+        self,
+        image_path: str,
+        strategy: Optional[AnalysisStrategy] = None,
+        fallback_strategy: Optional[FallbackStrategy] = None,
+    ) -> Optional[ContextAnalysisResult]:
+        """
+        Analyze a photo for context information.
+
+        This is the main entry point for photo context analysis. It orchestrates
+        the analysis pipeline based on the configured strategy and handles
+        fallbacks and retries.
+
+        Args:
+            image_path: Path to the image file to analyze.
+            strategy: Override the default analysis strategy.
+            fallback_strategy: Override the default fallback strategy.
+
+        Returns:
+            ContextAnalysisResult with analysis results, or None if analysis
+            failed completely.
+        """
+        strategy = strategy or self.config.strategy
+        fallback_strategy = fallback_strategy or self.config.fallback_strategy
+
+        logger.info(f"Analyzing image: {image_path} with strategy: {strategy}")
+
+        # Validate image path
+        if not Path(image_path).exists():
+            logger.error(f"Image file does not exist: {image_path}")
+            return None
+
+        # Run analysis based on strategy
+        result = None
+        if strategy == AnalysisStrategy.DEFAULT:
+            result = self._analyze_default(image_path)
+        elif strategy == AnalysisStrategy.AGGRESSIVE:
+            result = self._analyze_aggressive(image_path)
+        elif strategy == AnalysisStrategy.CONSERVATIVE:
+            result = self._analyze_conservative(image_path)
+        elif strategy == AnalysisStrategy.FAST:
+            result = self._analyze_fast(image_path)
+        else:
+            logger.warning(f"Unknown strategy: {strategy}, using default")
+            result = self._analyze_default(image_path)
+
+        # Apply fallback if needed
+        if result is None and fallback_strategy != FallbackStrategy.NONE:
+            result = self._apply_fallback(image_path, fallback_strategy)
+
+        # Validate and clean result
+        if result is not None:
+            result = self._validate_and_clean_result(result)
+            logger.info(
+                f"Analysis complete for {image_path}: "
+                f"decade={result.decade} (conf={result.decade_confidence:.2f}), "
+                f"season={result.season}, medium={result.photo_medium}"
+            )
+
+        return result
+
+    def _analyze_default(self, image_path: str) -> Optional[ContextAnalysisResult]:
+        """
+        Default analysis strategy.
+
+        Tries the primary model with default prompt, then falls back to
+        secondary model if needed.
+        """
+        logger.debug("Using default analysis strategy")
+
+        # Get primary model name
+        primary_model = self._get_primary_model_name()
+        if primary_model is None:
+            logger.error("Cannot perform analysis: no primary model available")
+            return None
+
+        # Try primary model with default prompt
+        result = self._with_retry(
+            lambda: self.ollama_client.analyze_image_context(
+                image_input=image_path,
+                model_name=primary_model,
+                prompt_template=self.ollama_client.get_prompt_template("default"),
+                use_base64=self.config.use_base64,
+            ),
+            "Primary model analysis",
+        )
+
+        # If result is None or has very low confidence, try fallback model
+        if (
+            result is None
+            or result.decade_confidence < self.config.min_decade_confidence
+        ):
+            fallback_model = self._get_fallback_model_name()
+            if fallback_model:
+                logger.debug("Trying fallback model due to low confidence")
+                result = self._with_retry(
+                    lambda: self.ollama_client.analyze_image_context(
+                        image_input=image_path,
+                        model_name=fallback_model,
+                        prompt_template=self.ollama_client.get_prompt_template(
+                            "default"
+                        ),
+                        use_base64=self.config.use_base64,
+                    ),
+                    "Fallback model analysis",
+                )
+
+        return result
+
+    def _get_primary_model_name(self) -> Optional[str]:
+        """
+        Safely get the primary model name from model_priority list.
+
+        Returns:
+            Model name string, or None if model_priority list is empty.
+        """
+        if not self.config.model_priority:
+            logger.error("model_priority list is empty")
+            return None
+        return self.config.model_priority[0].value
+
+    def _get_fallback_model_name(self) -> Optional[str]:
+        """
+        Safely get the fallback model name from model_priority list.
+
+        Returns:
+            Model name string, or None if model_priority list has less than 2 items.
+        """
+        if len(self.config.model_priority) < 2:
+            logger.debug("No fallback model available in model_priority list")
+            return None
+        return self.config.model_priority[1].value
+
+    def _analyze_aggressive(self, image_path: str) -> Optional[ContextAnalysisResult]:
+        """
+        Aggressive analysis strategy.
+
+        Tries multiple models and prompts, returning the result with the
+        highest overall confidence.
+        """
+        logger.debug("Using aggressive analysis strategy")
+
+        best_result = None
+        best_confidence = -1.0
+
+        for model in self.config.model_priority:
+            for prompt_name in self.config.prompt_templates:
+                logger.debug(f"Trying model {model.value} with prompt {prompt_name}")
+
+                result = self._with_retry(
+                    lambda: self.ollama_client.analyze_image_context(
+                        image_input=image_path,
+                        model_name=model.value,
+                        prompt_template=self.ollama_client.get_prompt_template(
+                            prompt_name
+                        ),
+                        use_base64=self.config.use_base64,
+                    ),
+                    f"Model {model.value} with prompt {prompt_name} analysis",
+                )
+
+                if result is not None:
+                    # Calculate overall confidence score
+                    overall_confidence = self._calculate_overall_confidence(result)
+
+                    if overall_confidence > best_confidence:
+                        best_confidence = overall_confidence
+                        best_result = result
+                        logger.debug(
+                            f"New best result with confidence {overall_confidence:.2f}"
+                        )
+
+                # Early exit if we have high confidence
+                if best_confidence >= 0.8:
+                    logger.debug("High confidence achieved, stopping early")
+                    return best_result
+
+        return best_result
+
+    def _analyze_conservative(self, image_path: str) -> Optional[ContextAnalysisResult]:
+        """
+        Conservative analysis strategy.
+
+        Only returns results that meet minimum confidence thresholds.
+        Tries multiple approaches but discards low-confidence results.
+        """
+        logger.debug("Using conservative analysis strategy")
+
+        # First try default analysis
+        result = self._analyze_default(image_path)
+
+        # Check if result meets minimum confidence thresholds
+        if result is not None:
+            meets_thresholds = True
+
+            if result.decade is not None:
+                if result.decade_confidence < self.config.min_decade_confidence:
+                    logger.debug(
+                        f"Decade confidence {result.decade_confidence:.2f} "
+                        f"below threshold {self.config.min_decade_confidence:.2f}"
+                    )
+                    meets_thresholds = False
+
+            if result.season is not None and result.season_confidence is not None:
+                if result.season_confidence < self.config.min_season_confidence:
+                    logger.debug(
+                        f"Season confidence {result.season_confidence:.2f} "
+                        f"below threshold {self.config.min_season_confidence:.2f}"
+                    )
+                    meets_thresholds = False
+
+            if result.event_hint is not None and result.event_confidence is not None:
+                if result.event_confidence < self.config.min_event_confidence:
+                    logger.debug(
+                        f"Event confidence {result.event_confidence:.2f} "
+                        f"below threshold {self.config.min_event_confidence:.2f}"
+                    )
+                    meets_thresholds = False
+
+            if not meets_thresholds:
+                logger.debug("Result does not meet confidence thresholds, discarding")
+                result = None
+
+        # If no acceptable result, try uncertainty handling
+        if result is None:
+            logger.debug("Trying uncertainty handling as fallback")
+            primary_model = self._get_primary_model_name()
+            if primary_model:
+                result = self._with_retry(
+                    lambda: self.ollama_client.analyze_image_context(
+                        image_input=image_path,
+                        model_name=primary_model,
+                        prompt_template=self.ollama_client.get_prompt_template(
+                            "uncertainty_handling"
+                        ),
+                        use_base64=self.config.use_base64,
+                    ),
+                    "Uncertainty handling analysis",
+                )
+
+        return result
+
+    def _analyze_fast(self, image_path: str) -> Optional[ContextAnalysisResult]:
+        """
+        Fast analysis strategy.
+
+        Uses simple prompts and minimal retries for speed.
+        """
+        logger.debug("Using fast analysis strategy")
+
+        # Use simple fallback prompt for speed
+        primary_model = self._get_primary_model_name()
+        if primary_model is None:
+            logger.error("Cannot perform fast analysis: no primary model available")
+            return None
+
+        result = self._with_retry(
+            lambda: self.ollama_client.analyze_image_context(
+                image_input=image_path,
+                model_name=primary_model,
+                prompt_template=self.ollama_client.get_prompt_template(
+                    "simple_fallback"
+                ),
+                use_base64=self.config.use_base64,
+            ),
+            "Fast analysis",
+        )
+
+        return result
+
+    def _apply_fallback(
+        self,
+        image_path: str,
+        fallback_strategy: FallbackStrategy,
+    ) -> Optional[ContextAnalysisResult]:
+        """
+        Apply fallback strategy when primary analysis fails.
+
+        Args:
+            image_path: Path to the image file.
+            fallback_strategy: Fallback strategy to apply.
+
+        Returns:
+            Fallback analysis result, or None if fallback also fails.
+        """
+        logger.info(f"Applying fallback strategy: {fallback_strategy}")
+
+        primary_model = self._get_primary_model_name()
+        if primary_model is None:
+            logger.error("Cannot apply fallback strategy: no primary model available")
+            return None
+
+        if fallback_strategy == FallbackStrategy.SIMPLE:
+            return self._with_retry(
+                lambda: self.ollama_client.analyze_image_context(
+                    image_input=image_path,
+                    model_name=primary_model,
+                    prompt_template=self.ollama_client.get_prompt_template(
+                        "simple_fallback"
+                    ),
+                    use_base64=self.config.use_base64,
+                ),
+                f"Fallback strategy: {fallback_strategy}",
+            )
+
+        elif fallback_strategy == FallbackStrategy.UNCERTAINTY:
+            return self._with_retry(
+                lambda: self.ollama_client.analyze_image_context(
+                    image_input=image_path,
+                    model_name=primary_model,
+                    prompt_template=self.ollama_client.get_prompt_template(
+                        "uncertainty_handling"
+                    ),
+                    use_base64=self.config.use_base64,
+                ),
+                f"Fallback strategy: {fallback_strategy}",
+            )
+
+        elif fallback_strategy == FallbackStrategy.MULTI_HYPOTHESIS:
+            return self._with_retry(
+                lambda: self.ollama_client.analyze_image_context(
+                    image_input=image_path,
+                    model_name=primary_model,
+                    prompt_template=self.ollama_client.get_prompt_template(
+                        "multi_hypothesis"
+                    ),
+                    use_base64=self.config.use_base64,
+                ),
+                f"Fallback strategy: {fallback_strategy}",
+            )
+
+        else:
+            logger.warning(f"Unknown fallback strategy: {fallback_strategy}")
+            return None
+
+    def _validate_and_clean_result(
+        self,
+        result: ContextAnalysisResult,
+    ) -> ContextAnalysisResult:
+        """
+        Validate and clean analysis result based on configuration.
+
+        Args:
+            result: Raw analysis result.
+
+        Returns:
+            Cleaned and validated result.
+        """
+        # Clear fields below confidence thresholds
+        if result.season is not None and result.season_confidence is not None:
+            if result.season_confidence < self.config.min_season_confidence:
+                logger.debug(
+                    f"Clearing season '{result.season}' due to low confidence: "
+                    f"{result.season_confidence:.2f} < {self.config.min_season_confidence:.2f}"
+                )
+                result.season = None
+                result.season_confidence = None
+
+        if result.event_hint is not None and result.event_confidence is not None:
+            if result.event_confidence < self.config.min_event_confidence:
+                logger.debug(
+                    f"Clearing event hint '{result.event_hint}' due to low confidence: "
+                    f"{result.event_confidence:.2f} < {self.config.min_event_confidence:.2f}"
+                )
+                result.event_hint = None
+                result.event_confidence = None
+
+        # Clear decade if confidence is too low
+        if result.decade is not None:
+            if result.decade_confidence < self.config.min_decade_confidence:
+                logger.debug(
+                    f"Clearing decade '{result.decade}' due to low confidence: "
+                    f"{result.decade_confidence:.2f} < {self.config.min_decade_confidence:.2f}"
+                )
+                result.decade = None
+                result.decade_confidence = 0.0
+                result.alternative_decades = None
+
+        # Ensure visual_evidence is a proper list
+        if result.visual_evidence is not None:
+            if not isinstance(result.visual_evidence, list):
+                result.visual_evidence = [result.visual_evidence]
+            # Remove empty strings
+            result.visual_evidence = [
+                evidence
+                for evidence in result.visual_evidence
+                if evidence and isinstance(evidence, str) and evidence.strip()
+            ]
+            if not result.visual_evidence:
+                result.visual_evidence = None
+
+        # Ensure alternative_decades is a proper list
+        if result.alternative_decades is not None:
+            if not isinstance(result.alternative_decades, list):
+                result.alternative_decades = [result.alternative_decades]
+            # Remove empty strings and invalid formats
+            valid_decades = []
+            for decade in result.alternative_decades:
+                if decade and isinstance(decade, str) and decade.strip():
+                    # Use the same validation pattern as ContextAnalysisResult
+                    pattern = r"^\d{4}-\d{4}$"
+                    if re.match(pattern, decade):
+                        # Basic validation: start year < end year, reasonable range
+                        try:
+                            start_year, end_year = map(int, decade.split("-"))
+                            if (
+                                start_year < end_year
+                                and 1800 <= start_year <= 2100
+                                and 1800 <= end_year <= 2100
+                            ):
+                                valid_decades.append(decade)
+                            else:
+                                logger.debug(
+                                    f"Skipping invalid alternative decade range: {decade}"
+                                )
+                        except ValueError:
+                            logger.debug(
+                                f"Skipping invalid alternative decade format: {decade}"
+                            )
+                    else:
+                        logger.debug(
+                            f"Skipping invalid alternative decade format: {decade}"
+                        )
+            result.alternative_decades = valid_decades if valid_decades else None
+
+        return result
+
+    def _calculate_overall_confidence(
+        self,
+        result: ContextAnalysisResult,
+    ) -> float:
+        """
+        Calculate overall confidence score for a result.
+
+        Args:
+            result: Analysis result.
+
+        Returns:
+            Overall confidence score (0.0-1.0).
+        """
+        weights = {
+            "decade": 0.5,
+            "season": 0.25,
+            "event": 0.25,
+        }
+
+        confidence_sum = 0.0
+        weight_sum = 0.0
+
+        # Decade confidence
+        confidence_sum += result.decade_confidence * weights["decade"]
+        weight_sum += weights["decade"]
+
+        # Season confidence
+        if result.season is not None and result.season_confidence is not None:
+            confidence_sum += result.season_confidence * weights["season"]
+            weight_sum += weights["season"]
+
+        # Event confidence
+        if result.event_hint is not None and result.event_confidence is not None:
+            confidence_sum += result.event_confidence * weights["event"]
+            weight_sum += weights["event"]
+
+        # Normalize by actual weights used
+        if weight_sum > 0:
+            return confidence_sum / weight_sum
+        else:
+            # This should never happen since decade confidence always has weight
+            # But as a safety fallback, return 0.0
+            logger.warning(
+                "No weights applied in confidence calculation, returning 0.0"
+            )
+            return 0.0
+
+    def health_check(self) -> Dict[str, Any]:
+        """
+        Perform health check on the analyzer and underlying Ollama client.
+
+        Returns:
+            Dictionary with health status and details.
+        """
+        ollama_health = self.ollama_client.health_check()
+
+        health_status = {
+            "status": "healthy"
+            if ollama_health.get("status") == "healthy"
+            else "unhealthy",
+            "analyzer_config": {
+                "strategy": self.config.strategy.value,
+                "fallback_strategy": self.config.fallback_strategy.value,
+                "min_decade_confidence": self.config.min_decade_confidence,
+                "min_season_confidence": self.config.min_season_confidence,
+                "min_event_confidence": self.config.min_event_confidence,
+            },
+            "ollama_health": ollama_health,
+        }
+
+        return health_status
+
+    def get_available_strategies(self) -> List[str]:
+        """Get list of available analysis strategies."""
+        return [strategy.value for strategy in AnalysisStrategy]
+
+    def get_available_fallback_strategies(self) -> List[str]:
+        """Get list of available fallback strategies."""
+        return [strategy.value for strategy in FallbackStrategy]
+
+
+# Default analyzer instance
+_default_analyzer: Optional[ContextAnalyzer] = None
+
+
+def get_context_analyzer(
+    ollama_client: Optional[OllamaClient] = None,
+    config: Optional[ContextAnalyzerConfig] = None,
+    ollama_config: Optional[OllamaConfig] = None,
+) -> ContextAnalyzer:
+    """
+    Get or create default ContextAnalyzer instance.
+
+    Args:
+        ollama_client: Pre-configured OllamaClient instance.
+        config: ContextAnalyzer configuration.
+        ollama_config: OllamaClient configuration.
+
+    Returns:
+        ContextAnalyzer instance.
+
+    Raises:
+        ValueError: If trying to get analyzer with different ollama_client
+            when singleton already exists.
+    """
+    global _default_analyzer
+    if _default_analyzer is None:
+        _default_analyzer = ContextAnalyzer(
+            ollama_client=ollama_client,
+            config=config,
+            ollama_config=ollama_config,
+        )
+    else:
+        # Check if caller is trying to use different ollama_client
+        # than what the singleton was created with
+        if (
+            ollama_client is not None
+            and _default_analyzer.ollama_client is not ollama_client
+        ):
+            raise ValueError(
+                "Cannot get context analyzer with different ollama_client when "
+                "singleton already exists. Existing analyzer was created with "
+                f"{_default_analyzer.ollama_client}. "
+                "Reset the singleton by setting photochron.context.analyzer._default_analyzer = None "
+                "if you need a different configuration."
+            )
+
+        # Check if caller is trying to use ollama_config when singleton already exists
+        # We can't update ollama_config after creation, but for backward compatibility
+        # we log a warning instead of raising an error
+        if ollama_config is not None:
+            logger.warning(
+                "get_context_analyzer() called with ollama_config when "
+                "singleton already exists. Ollama configuration is being ignored. "
+                "To use a different configuration, reset the singleton by "
+                "setting photochron.context.analyzer._default_analyzer = None"
+            )
+
+        # Update config if provided
+        if config is not None:
+            logger.info("Updating existing ContextAnalyzer configuration: %s", config)
+            _default_analyzer.config = config
+
+    return _default_analyzer

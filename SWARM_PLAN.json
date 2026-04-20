@@ -1,0 +1,329 @@
+{
+  "schema_version": "1.0.0",
+  "title": "Complete Context Layer Implementation",
+  "swarm": "default",
+  "current_phase": 1,
+  "phases": [
+    {
+      "id": 1,
+      "name": "Configuration Fix and Integration",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "1.1",
+          "phase": 1,
+          "status": "pending",
+          "size": "small",
+          "description": "Add ConfigContext class to src/photochron/config/models.py with fields: ollama_host, ollama_timeout, max_retries, retry_delay, primary_model, fallback_model, batch_size, min_decade_confidence, min_season_confidence, use_fallback_on_failure, store_minimal_on_complete_failure",
+          "depends": [],
+          "acceptance": "ConfigContext class exists with all fields. Verify by running: python -c 'from photochron.config.models import ConfigContext; c = ConfigContext(); assert hasattr(c, \"ollama_host\"); print(\"OK\")'",
+          "files_touched": []
+        },
+        {
+          "id": "1.2",
+          "phase": 1,
+          "status": "pending",
+          "size": "small",
+          "description": "Update Config class in src/photochron/config/models.py to include context: ConfigContext = Field(default_factory=ConfigContext)",
+          "depends": [],
+          "acceptance": "Config class has context attribute. Verify by running: python -c 'from photochron.config.models import Config; c = Config(); assert hasattr(c, \"context\"); print(\"OK\")' and verify config.yaml loads without validation errors",
+          "files_touched": []
+        },
+        {
+          "id": "1.3",
+          "phase": 1,
+          "status": "pending",
+          "size": "small",
+          "description": "Fix ContextLayerStage.__init__() line 27 to use self.config.context - verify no AttributeError",
+          "depends": [],
+          "acceptance": "ContextLayerStage initialization works. Verify by running: python -c 'from photochron.pipeline.stages.context_layer import ContextLayerStage; stage = ContextLayerStage(); print(\"Stage initialized successfully\")' should not raise AttributeError",
+          "files_touched": []
+        },
+        {
+          "id": "1.4",
+          "phase": 1,
+          "status": "completed",
+          "size": "small",
+          "description": "Add configuration validation in ContextLayerStage.__init__() with health check, model availability check, and graceful degradation if Ollama unavailable",
+          "depends": [],
+          "acceptance": "Stage logs warning but doesn't crash if Ollama unavailable. Verify by mocking Ollama failure in test",
+          "files_touched": []
+        },
+        {
+          "id": "1.5",
+          "phase": 1,
+          "status": "completed",
+          "size": "small",
+          "description": "Test database integration by creating test that calls _get_photos_without_context()",
+          "depends": [],
+          "acceptance": "Test passes: method executes without errors. Create test in tests/unit/test_context_layer.py with 2+ assertions",
+          "files_touched": []
+        },
+        {
+          "id": "1.6",
+          "phase": 1,
+          "status": "completed",
+          "size": "small",
+          "description": "Create directory tests/unit/models/ with __init__.py",
+          "depends": [],
+          "acceptance": "Directory exists with __init__.py. Verify: ls tests/unit/models/ shows __init__.py",
+          "files_touched": []
+        },
+        {
+          "id": "1.7",
+          "phase": 1,
+          "status": "pending",
+          "size": "small",
+          "description": "Create directory tests/unit/context/ with __init__.py",
+          "depends": [],
+          "acceptance": "Directory exists with __init__.py. Verify: ls tests/unit/context/ shows __init__.py",
+          "files_touched": []
+        },
+        {
+          "id": "1.8",
+          "phase": 1,
+          "status": "pending",
+          "size": "small",
+          "description": "Verify tests/integration/ directory exists, create if missing",
+          "depends": [],
+          "acceptance": "Directory exists. Verify: ls tests/integration/ shows at least __init__.py",
+          "files_touched": []
+        },
+        {
+          "id": "1.9",
+          "phase": 1,
+          "status": "pending",
+          "size": "small",
+          "description": "Create docs/ directory with __init__.py if doesn't exist",
+          "depends": [],
+          "acceptance": "Directory exists with __init__.py. Verify: ls docs/ shows __init__.py",
+          "files_touched": []
+        },
+        {
+          "id": "1.10",
+          "phase": 1,
+          "status": "pending",
+          "size": "small",
+          "description": "Create examples/ directory with __init__.py if doesn't exist",
+          "depends": [],
+          "acceptance": "Directory exists with __init__.py. Verify: ls examples/ shows __init__.py",
+          "files_touched": []
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Error Handling Enhancement",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "2.1",
+          "phase": 2,
+          "status": "completed",
+          "size": "small",
+          "description": "Review ContextAnalyzer._with_retry() error handling - ensure clear error messages for Ollama connection failures vs model not found",
+          "depends": [],
+          "acceptance": "Error messages distinguish connection issues from model issues. Verify by checking log messages in test",
+          "files_touched": []
+        },
+        {
+          "id": "2.2",
+          "phase": 2,
+          "status": "completed",
+          "size": "small",
+          "description": "Verify OllamaClient.analyze_image_context() JSON parsing fallback works by testing with invalid JSON response",
+          "depends": [],
+          "acceptance": "Test passes: OllamaClient retries with simplified prompt when JSON parsing fails. Create test with 3+ assertions",
+          "files_touched": []
+        },
+        {
+          "id": "2.3",
+          "phase": 2,
+          "status": "completed",
+          "size": "small",
+          "description": "Test ContextAnalyzer._analyze_default() model fallback by mocking primary model failure",
+          "depends": [],
+          "acceptance": "Test passes: ContextAnalyzer uses fallback model when primary model returns error. Create test with 2+ assertions",
+          "files_touched": []
+        },
+        {
+          "id": "2.4",
+          "phase": 2,
+          "status": "completed",
+          "size": "small",
+          "description": "Verify OllamaClient timeout handling by testing with mock slow response",
+          "depends": [],
+          "acceptance": "Test passes: OllamaClient raises TimeoutError when response exceeds timeout. Create test with 2+ assertions",
+          "files_touched": []
+        },
+        {
+          "id": "2.5",
+          "phase": 2,
+          "status": "completed",
+          "size": "small",
+          "description": "Implement batch processing loop in ContextLayerStage.run() using config.context.batch_size",
+          "depends": [],
+          "acceptance": "Stage processes photos in batches. Verify by checking batch logic in run() method",
+          "files_touched": []
+        },
+        {
+          "id": "2.6",
+          "phase": 2,
+          "status": "completed",
+          "size": "small",
+          "description": "Add simple memory check before each batch (check available memory > 100MB)",
+          "depends": [],
+          "acceptance": "Memory check exists in batch processing loop. Verify by checking for memory monitoring code",
+          "files_touched": []
+        },
+        {
+          "id": "2.7",
+          "phase": 2,
+          "status": "pending",
+          "size": "small",
+          "description": "Add progress reporting for batch processing (percentage complete)",
+          "depends": [],
+          "acceptance": "Stage logs progress percentage. Verify by checking for progress logging in run() method",
+          "files_touched": []
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Testing Suite",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "3.1",
+          "phase": 3,
+          "status": "pending",
+          "size": "medium",
+          "description": "Create tests/unit/models/test_ollama_client.py with 5+ tests covering connection, image analysis, JSON parsing, timeout, error handling",
+          "depends": [],
+          "acceptance": "Test file exists with 5+ tests. Verify by running: pytest tests/unit/models/test_ollama_client.py -v passes all tests",
+          "files_touched": []
+        },
+        {
+          "id": "3.2",
+          "phase": 3,
+          "status": "pending",
+          "size": "medium",
+          "description": "Create tests/unit/context/test_analyzer.py with tests for all analysis strategies (DEFAULT, AGGRESSIVE, CONSERVATIVE, FAST) using mocked LLM responses",
+          "depends": [],
+          "acceptance": "Test file exists with 4+ strategy tests. Verify by running: pytest tests/unit/context/test_analyzer.py -v passes all tests",
+          "files_touched": []
+        },
+        {
+          "id": "3.3",
+          "phase": 3,
+          "status": "pending",
+          "size": "large",
+          "description": "Create tests/integration/test_context_layer.py with integration tests using mock images to test full pipeline",
+          "depends": [],
+          "acceptance": "Test file exists with 3+ integration tests. Verify by running: pytest tests/integration/test_context_layer.py -v passes all tests",
+          "files_touched": []
+        },
+        {
+          "id": "3.4",
+          "phase": 3,
+          "status": "pending",
+          "size": "small",
+          "description": "Create tests/unit/test_error_handling.py with tests for retry logic and fallback strategies",
+          "depends": [],
+          "acceptance": "Test file exists with 3+ error handling tests. Verify by running: pytest tests/unit/test_error_handling.py -v passes all tests",
+          "files_touched": []
+        },
+        {
+          "id": "3.5",
+          "phase": 3,
+          "status": "pending",
+          "size": "small",
+          "description": "Create tests/unit/test_confidence_validation.py with tests for confidence score validation and propagation",
+          "depends": [],
+          "acceptance": "Test file exists with 3+ confidence validation tests. Verify by running: pytest tests/unit/test_confidence_validation.py -v passes all tests",
+          "files_touched": []
+        },
+        {
+          "id": "3.6",
+          "phase": 3,
+          "status": "pending",
+          "size": "small",
+          "description": "Create tests/unit/test_database_integration.py with tests for context record insertion and transaction integrity",
+          "depends": [],
+          "acceptance": "Test file exists with 3+ database tests. Verify by running: pytest tests/unit/test_database_integration.py -v passes all tests",
+          "files_touched": []
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Documentation",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "4.1",
+          "phase": 4,
+          "status": "pending",
+          "size": "small",
+          "description": "Update CLAUDE.md with 'Context Layer' section showing usage: photochron pipeline run --stages context_layer",
+          "depends": [],
+          "acceptance": "CLAUDE.md has Context Layer section. Verify: grep -n 'Context Layer' CLAUDE.md returns line numbers",
+          "files_touched": []
+        },
+        {
+          "id": "4.2",
+          "phase": 4,
+          "status": "pending",
+          "size": "medium",
+          "description": "Create docs/context-layer.md with sections: Architecture, Configuration, Usage Patterns, Troubleshooting",
+          "depends": [],
+          "acceptance": "File exists with all sections. Verify: ls docs/context-layer.md exists and file size > 1KB",
+          "files_touched": []
+        },
+        {
+          "id": "4.3",
+          "phase": 4,
+          "status": "pending",
+          "size": "small",
+          "description": "Create docs/ollama-setup.md with instructions for installing Ollama and models: ollama pull llava-next:7b moondream2",
+          "depends": [],
+          "acceptance": "File exists with installation steps. Verify: ls docs/ollama-setup.md exists",
+          "files_touched": []
+        },
+        {
+          "id": "4.4",
+          "phase": 4,
+          "status": "pending",
+          "size": "small",
+          "description": "Create examples/context-config-example.yaml showing all context configuration options with comments",
+          "depends": [],
+          "acceptance": "File exists with commented configuration. Verify: ls examples/context-config-example.yaml exists",
+          "files_touched": []
+        },
+        {
+          "id": "4.5",
+          "phase": 4,
+          "status": "pending",
+          "size": "small",
+          "description": "Update docs/pipeline.md to include Context Layer stage with dependencies, inputs, outputs, configuration",
+          "depends": [],
+          "acceptance": "Pipeline documentation includes context layer. Verify: grep -n 'context.*layer' docs/pipeline.md returns line numbers",
+          "files_touched": []
+        },
+        {
+          "id": "4.6",
+          "phase": 4,
+          "status": "pending",
+          "size": "small",
+          "description": "Verify all documentation files exist and are non-empty",
+          "depends": [],
+          "acceptance": "All doc files from 4.1-4.5 exist and have content. Verify by checking each file exists and has size > 0",
+          "files_touched": []
+        }
+      ]
+    }
+  ],
+  "migration_status": "native",
+  "specMtime": "2026-04-13T21:18:32.600Z",
+  "specHash": "08312a9508a213eefca37e86a093d7cf8736b39b78b0edc319f1e0956e909f03"
+}

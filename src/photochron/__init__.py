@@ -1,0 +1,21 @@
+"""
+PhotoChron - Local-first CLI tool for sorting family photos chronologically.
+
+This package provides a 6-stage pipeline for analyzing and sorting digitized
+family photos without timestamps using AI-based age estimation, visual context
+analysis, and user-provided anchor data.
+
+All inference runs fully on-device. No data leaves the machine.
+"""
+
+__version__ = "0.1.0"
+__author__ = "PhotoChron Team"
+__license__ = "MIT"
+
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+CACHE_DIR = PROJECT_ROOT / ".photochron"
+
+# Ensure cache directory exists
+CACHE_DIR.mkdir(exist_ok=True)

@@ -1,0 +1,192 @@
+# Configuration Reference
+
+PhotoChron uses a hierarchical configuration system with sensible defaults. Configuration can be customized via `config.yaml` or environment variables.
+
+## Configuration Structure
+
+### Root Configuration (`Config` class)
+- `version`: Configuration schema version (string)
+- `paths`: Path configuration (`ConfigPaths`)
+- `models`: AI model configuration (`ConfigModels`)
+- `ingestion`: Ingestion stage configuration (`ConfigIngestion`)
+- `face`: Face layer configuration (`ConfigFace`)
+- `pipeline`: Pipeline configuration (`ConfigPipeline`)
+- `context`: Context layer configuration (`ConfigContext`)
+
+### Path Configuration (`ConfigPaths`)
+- `cache_dir`: Directory for cache and database (default: `.photochron`)
+- `thumbs_dir`: Directory for downsampled thumbnails (default: `.photochron/thumbs`)
+- `output_dir`: Directory for output files (default: `photochron_output`)
+
+### Model Configuration (`ConfigModels`)
+- `insightface_version`: InsightFace model version (default: `buffalo_l`)
+- `ollama_model`: Ollama vision LLM model (default: `llava-next:7b`)
+- `fallback_model`: Fallback vision model (default: `moondream2`)
+- `max_image_size`: Maximum image size for processing in pixels (default: `1024`)
+
+### Ingestion Configuration (`ConfigIngestion`)
+- `max_downsample_size`: Maximum size for downsampled images in pixels (default: `1024`)
+- `supported_formats`: List of supported image file extensions (default: `.jpg`, `.jpeg`, `.png`, `.heic`, `.heif`, `.cr2`, `.nef`, `.arw`, `.dng`)
+- `skip_duplicates`: Whether to skip duplicate files (default: `true`)
+- `extract_gps`: Whether to extract GPS coordinates from EXIF (default: `true`)
+- `fallback_timestamp`: Fallback timestamp source when EXIF missing (default: `file_mtime`)
+
+### Face Layer Configuration (`ConfigFace`)
+- `model_name`: InsightFace model name (default: `buffalo_l`)
+- `detection_threshold`: Minimum confidence for face detection (0.0-1.0, default: `0.5`)
+- `matching_threshold`: Cosine similarity threshold for person matching (0.0-1.0, default: `0.6`)
+- `age_confidence_scale`: Scale factor for age estimation standard deviation (default: `0.1`)
+- `use_gpu`: Whether to use GPU acceleration (default: `false`)
+- `batch_size`: Batch size for face detection (default: `1`)
+
+### Pipeline Configuration (`ConfigPipeline`)
+- `face_age_weight`: Weight for face age estimates in ranking (0.0-1.0, default: `0.45`)
+- `llm_decade_weight`: Weight for LLM decade estimates in ranking (0.0-1.0, default: `0.30`)
+- `photo_medium_weight`: Weight for photo medium priors in ranking (0.0-1.0, default: `0.10`)
+- `min_confidence_threshold`: Minimum confidence for results to be considered reliable (0.0-1.0, default: `0.5`)
+- `max_pairwise_comparisons`: Maximum number of pairwise LLM comparisons per run (default: `500`)
+
+### Context Layer Configuration (`ConfigContext`)
+The context layer configuration provides comprehensive settings for Ollama integration, graceful degradation, and resource management:
+
+#### Ollama Server Settings
+- `ollama_host`: Ollama server URL (default: `http://localhost:11434`)
+- `ollama_timeout`: Timeout in seconds for Ollama requests (default: `300`)
+
+#### Model Management
+- `primary_model`: Primary vision LLM model (default: `llava-next:7b`)
+- `fallback_model`: Fallback vision model (default: `moondream2`)
+
+#### Retry and Error Handling
+- `max_retries`: Maximum retry attempts for LLM failures (default: `3`)
+- `retry_delay`: Delay between retries in seconds (default: `2.0`)
+- `use_fallback_on_failure`: Use fallback strategies on analysis failure (default: `true`)
+- `store_minimal_on_complete_failure`: Store minimal data when analysis completely fails (default: `true`)
+
+#### Memory Management
+- `memory_warning_threshold_mb`: Memory warning threshold in MB. Logs warning if available memory falls below this value. Must be greater than `memory_critical_threshold_mb`. (default: `100`, range: 10-10000)
+- `memory_critical_threshold_mb`: Memory critical threshold in MB. Skips batch processing if available memory falls below this value. Must be less than `memory_warning_threshold_mb`. (default: `50`, range: 10-10000)
+- `memory_retry_delay_seconds`: Delay in seconds to wait when memory is critically low before retrying batch processing. (default: `30`, range: 1-300)
+
+#### Processing Settings
+- `batch_size`: Batch size for processing images (default: `1`)
+- `min_decade_confidence`: Minimum confidence for decade estimates (0.0-1.0, default: `0.3`)
+- `min_season_confidence`: Minimum confidence for season estimates (0.0-1.0, default: `0.4`)
+
+## Configuration Validation
+
+The context layer performs comprehensive configuration validation:
+
+1. **Model Availability Check**: Verifies that configured models are available in Ollama
+2. **Server Health Check**: Validates Ollama server connectivity
+3. **Graceful Degradation**: Automatically falls back to available models or enters degraded mode
+4. **Runtime Health Monitoring**: Provides real-time health status via `health_status` property
+
+## Environment Variables
+
+Any configuration value can be overridden using environment variables. The format is:
+```
+PHOTOCHRON_<SECTION>_<KEY>
+```
+
+### Examples:
+```bash
+# Override Ollama host
+export PHOTOCHRON_CONTEXT_OLLAMA_HOST="http://192.168.1.100:11434"
+
+# Increase timeout
+export PHOTOCHRON_CONTEXT_OLLAMA_TIMEOUT=600
+
+# Use different model
+export PHOTOCHRON_CONTEXT_PRIMARY_MODEL="llava-next:13b"
+
+# Disable GPS extraction
+export PHOTOCHRON_INGESTION_EXTRACT_GPS=false
+```
+
+## Default Configuration File
+
+```yaml
+# PhotoChron Configuration
+# Default values from architecture specification
+
+version: "1.0"
+
+paths:
+  cache_dir: ".photochron"
+  thumbs_dir: ".photochron/thumbs"
+  output_dir: "photochron_output"
+
+models:
+  insightface_version: "buffalo_l"
+  ollama_model: "llava-next:7b"
+  fallback_model: "moondream2"
+  max_image_size: 1024
+
+ingestion:
+  max_downsample_size: 1024
+  supported_formats:
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".heic"
+    - ".heif"
+    - ".cr2"
+    - ".nef"
+    - ".arw"
+    - ".dng"
+  skip_duplicates: true
+  extract_gps: true
+  fallback_timestamp: "file_mtime"
+
+face:
+  model_name: "buffalo_l"
+  detection_threshold: 0.5
+  matching_threshold: 0.6
+  age_confidence_scale: 0.1
+  use_gpu: false
+  batch_size: 1
+
+context:
+  ollama_host: "http://localhost:11434"
+  ollama_timeout: 300
+  max_retries: 3
+  retry_delay: 2.0
+  primary_model: "llava-next:7b"
+  fallback_model: "moondream2"
+  batch_size: 1
+  min_decade_confidence: 0.3
+  min_season_confidence: 0.4
+  use_fallback_on_failure: true
+  store_minimal_on_complete_failure: true
+  memory_warning_threshold_mb: 100
+  memory_critical_threshold_mb: 50
+  memory_retry_delay_seconds: 30
+
+pipeline:
+  face_age_weight: 0.45
+  llm_decade_weight: 0.30
+  photo_medium_weight: 0.10
+  min_confidence_threshold: 0.5
+  max_pairwise_comparisons: 500
+```
+
+## Health Status Monitoring
+
+The context layer provides real-time health status through the `health_status` property:
+
+```python
+{
+    "is_healthy": True,  # Overall health status
+    "degraded_mode": False,  # Whether operating in degraded mode
+    "available_models": {  # Dictionary of available models
+        "primary": True,
+        "fallback": True
+    }
+}
+```
+
+**Degraded Mode**: When neither primary nor fallback models are available, the system enters degraded mode. In this mode:
+- Context analysis is skipped
+- Minimal data may be stored (if `store_minimal_on_complete_failure` is `true`)
+- The pipeline continues with other stages
