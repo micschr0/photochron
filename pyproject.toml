@@ -6,10 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "photochron"
 version = "0.1.0"
 description = "Local-first CLI tool that sorts digitized family photos without timestamps into chronological order using AI-based age estimation"
-readme = "CLAUDE.md"
+readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "PhotoChron Team", email = "team@photochron.example.com"}
+    {name = "PhotoChron Contributors"}
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

@@ -2,6 +2,28 @@
 
 PhotoChron uses a 6-stage pipeline where each stage reads/writes to a SQLite Feature Store only. Stages are independently re-runnable via `photochron rerun --stage <name>`.
 
+```mermaid
+flowchart LR
+    I[1 · Ingestion<br/>📥 scan · hash · EXIF]:::stage
+    F[2 · Face Layer<br/>👤 detect · age · match]:::stage
+    C[3 · Context Layer<br/>🖼️ decade · season · medium]:::stage
+    A[4 · Anchor Layer<br/>🎂 birthdays · events]:::stage
+    R[5 · Ranking Engine<br/>⚖️ fuse · constrain]:::stage
+    O[6 · Output Layer<br/>📤 sorted copies]:::stage
+    DB[(🗄️ SQLite<br/>Feature Store)]:::store
+
+    I --> F --> C --> A --> R --> O
+    I -.-> DB
+    F -.-> DB
+    C -.-> DB
+    A -.-> DB
+    R -.-> DB
+    O -.-> DB
+
+    classDef stage fill:#f4e6c8,stroke:#6b4f1f,stroke-width:2px,color:#1f1608
+    classDef store fill:#5c4a2a,stroke:#2a1e0a,stroke-width:2px,color:#f4e6c8
+```
+
 ## Stage 1: Ingestion
 **Trigger**: new run or `--rerun-stage ingestion`  
 **Input**: JPEG files in input directory  

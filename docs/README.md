@@ -10,15 +10,6 @@ This directory contains user-facing documentation for PhotoChron.
 - **[Testing Strategy](testing.md)**: Comprehensive test suite documentation and test organization
 - **[Changelog](CHANGELOG.md)**: Version history and release notes
 
-### Agent Documentation
-For internal development documentation, see the `agent_docs/` directory:
-- `agent_docs/SPEC.md`: Full architecture specification
-- `agent_docs/pipeline.md`: Pipeline implementation details
-- `agent_docs/models.md`: AI model specifications and hardware requirements
-- `agent_docs/data_formats.md`: Database schema and data formats
-- `agent_docs/commands.md`: CLI command reference
-- `agent_docs/boundaries.md`: Development boundaries and constraints
-
 ## Quick Start
 
 ### Installation
