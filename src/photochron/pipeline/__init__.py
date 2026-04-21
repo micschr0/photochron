@@ -4,15 +4,14 @@ Pipeline foundation for PhotoChron 6-stage architecture.
 Defines the PipelineStage abstract base class and pipeline orchestration.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Type
-from datetime import datetime
 import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime
 
 from loguru import logger
 
-from photochron.store import get_store
 from photochron.config import get_config
+from photochron.store import get_store
 
 
 class PipelineStage(ABC):
@@ -31,7 +30,7 @@ class PipelineStage(ABC):
 
     @property
     @abstractmethod
-    def dependencies(self) -> List[str]:
+    def dependencies(self) -> list[str]:
         """List of stage names this stage depends on."""
         pass
 
@@ -99,20 +98,20 @@ class PipelineRegistry:
     """Registry of available pipeline stages."""
 
     def __init__(self):
-        self._stages: Dict[str, Type[PipelineStage]] = {}
+        self._stages: dict[str, type[PipelineStage]] = {}
 
-    def register(self, stage_class: Type[PipelineStage]) -> None:
+    def register(self, stage_class: type[PipelineStage]) -> None:
         """Register a pipeline stage class."""
         stage = stage_class()
         self._stages[stage.name] = stage_class
 
-    def get_stage(self, name: str) -> Optional[PipelineStage]:
+    def get_stage(self, name: str) -> PipelineStage | None:
         """Get an instance of a pipeline stage by name."""
         if name not in self._stages:
             return None
         return self._stages[name]()
 
-    def get_dependency_order(self) -> List[str]:
+    def get_dependency_order(self) -> list[str]:
         """
         Get stage names in dependency order (topological sort).
 
@@ -122,7 +121,7 @@ class PipelineRegistry:
         # In a real implementation, we'd do topological sort
         return list(self._stages.keys())
 
-    def validate_dependencies(self) -> List[str]:
+    def validate_dependencies(self) -> list[str]:
         """Validate that all stage dependencies exist."""
         errors = []
         for name, stage_class in self._stages.items():
@@ -134,7 +133,7 @@ class PipelineRegistry:
 
 
 # Global registry instance
-_registry: Optional[PipelineRegistry] = None
+_registry: PipelineRegistry | None = None
 
 
 def get_registry() -> PipelineRegistry:
@@ -145,7 +144,7 @@ def get_registry() -> PipelineRegistry:
     return _registry
 
 
-def register_stage(stage_class: Type[PipelineStage]) -> None:
+def register_stage(stage_class: type[PipelineStage]) -> None:
     """Decorator to register a pipeline stage."""
     get_registry().register(stage_class)
     return stage_class
@@ -175,9 +174,7 @@ class PipelineRunner:
 
         return run_id
 
-    def run_pipeline(
-        self, input_dir: str, output_dir: str, dry_run: bool = False
-    ) -> str:
+    def run_pipeline(self, input_dir: str, output_dir: str, dry_run: bool = False) -> str:
         """
         Run the full pipeline.
 

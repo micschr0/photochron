@@ -4,17 +4,17 @@ Mock image generation utilities for tests.
 
 import tempfile
 from pathlib import Path
-from typing import Optional, Tuple
-from PIL import Image, ImageDraw
+
 import piexif
+from PIL import Image, ImageDraw
 
 
 def create_test_image(
     width: int = 800,
     height: int = 600,
-    color: Tuple[int, int, int] = (100, 150, 200),
+    color: tuple[int, int, int] = (100, 150, 200),
     format: str = "JPEG",
-    exif: Optional[dict] = None,
+    exif: dict | None = None,
 ) -> Path:
     """
     Create a test image with optional EXIF metadata.
@@ -53,7 +53,7 @@ def create_test_image(
 
 
 def create_sample_photo_with_exif(
-    datetime_original: Optional[str] = None,
+    datetime_original: str | None = None,
     make: str = "Test Camera",
     model: str = "Test Model",
 ) -> Path:
@@ -77,16 +77,14 @@ def create_sample_photo_with_exif(
     }
 
     if datetime_original:
-        exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = datetime_original.encode(
-            "utf-8"
-        )
+        exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = datetime_original.encode("utf-8")
 
     return create_test_image(exif=exif_dict)
 
 
 def create_face_test_image(
     num_faces: int = 1,
-    face_positions: Optional[list] = None,
+    face_positions: list | None = None,
 ) -> Path:
     """
     Create a test image with simulated faces.

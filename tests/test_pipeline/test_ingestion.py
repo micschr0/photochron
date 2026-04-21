@@ -2,16 +2,15 @@
 Unit tests for the IngestionStage.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import tempfile
-import shutil
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 from PIL import Image
 
-from photochron.pipeline.stages.ingestion import IngestionStage
 from photochron.config import Config
-from photochron.store import get_store
+from photochron.pipeline.stages.ingestion import IngestionStage
 
 
 class TestIngestionStage:
@@ -95,13 +94,9 @@ class TestIngestionStage:
                     "_extract_exif_metadata",
                     return_value={"datetime": "2023-01-01T12:00:00"},
                 ):
-                    with patch.object(
-                        stage, "_create_downsampled_image", return_value=None
-                    ):
+                    with patch.object(stage, "_create_downsampled_image", return_value=None):
                         with patch.object(stage, "_store_photo_metadata") as mock_store:
-                            stage._process_image(
-                                Path("/fake/image.jpg"), Path(tmp_path), "run123"
-                            )
+                            stage._process_image(Path("/fake/image.jpg"), Path(tmp_path), "run123")
 
                             # Verify image was opened
                             mock_image_open.assert_called_once()
@@ -117,9 +112,7 @@ class TestIngestionStage:
         mock_img.size = (4000, 3000)  # Large image
         mock_img.format = "JPEG"
 
-        downsampled_path = stage._create_downsampled_image(
-            mock_img, "hash123", Path(tmp_path), "JPEG"
-        )
+        downsampled_path = stage._create_downsampled_image(mock_img, "hash123", Path(tmp_path), "JPEG")
 
         # Should return a path
         assert downsampled_path is not None
@@ -139,9 +132,7 @@ class TestIngestionStage:
         mock_img.format = "JPEG"
 
         with patch.object(mock_img, "resize") as mock_resize:
-            downsampled_path = stage._create_downsampled_image(
-                mock_img, "hash123", Path(tmp_path), "JPEG"
-            )
+            downsampled_path = stage._create_downsampled_image(mock_img, "hash123", Path(tmp_path), "JPEG")
 
             # Should return None (no downsampling needed)
             assert downsampled_path is None
@@ -175,9 +166,7 @@ class TestIngestionStage:
         test_file = tmp_path / "test.jpg"
         test_file.touch()
 
-        with patch(
-            "photochron.pipeline.stages.ingestion.Image.open"
-        ) as mock_image_open:
+        with patch("photochron.pipeline.stages.ingestion.Image.open") as mock_image_open:
             mock_img = Mock()
             mock_img.getexif.return_value = {}
             mock_image_open.return_value.__enter__.return_value = mock_img
@@ -232,7 +221,7 @@ class TestIngestionStage:
     def test_integration_full_ingestion(self, database_store, temp_image_dir):
         """Integration test: run full ingestion on mock image directory."""
         # Create a real IngestionStage with proper config
-        from photochron.config import Config, ConfigPaths, ConfigModels, ConfigPipeline
+        from photochron.config import Config, ConfigModels, ConfigPaths, ConfigPipeline
 
         config = Config(
             version="1.0",
@@ -258,9 +247,7 @@ class TestIngestionStage:
         )
 
         # Patch get_config to return our config
-        with patch(
-            "photochron.pipeline.stages.ingestion.get_config", return_value=config
-        ):
+        with patch("photochron.pipeline.stages.ingestion.get_config", return_value=config):
             # Patch get_store to return our test database store
             with patch(
                 "photochron.pipeline.stages.ingestion.get_store",
@@ -282,8 +269,6 @@ class TestIngestionStage:
                     assert row["count"] == 2  # Should have 2 images (jpg and png)
 
                     # Verify at least one photo has perceptual hash
-                    cursor = conn.execute(
-                        "SELECT perceptual_hash FROM photos WHERE perceptual_hash IS NOT NULL"
-                    )
+                    cursor = conn.execute("SELECT perceptual_hash FROM photos WHERE perceptual_hash IS NOT NULL")
                     hashes = cursor.fetchall()
                     assert len(hashes) > 0

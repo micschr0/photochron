@@ -4,10 +4,10 @@ Parsing and validation for anchors.yaml file.
 
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Literal
-import yaml
+from typing import Literal
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+import yaml
+from pydantic import BaseModel, Field, field_validator
 
 
 class PersonAnchor(BaseModel):
@@ -34,12 +34,8 @@ class EventAnchor(BaseModel):
     name: str = Field(..., description="Event name")
     date: str = Field(..., description="Event date in YYYY-MM-DD format")
     type: Literal["hard", "soft"] = Field("soft", description="Constraint type")
-    photos_after: Optional[List[str]] = Field(
-        None, description="Photos that must be AFTER this date"
-    )
-    photos_before: Optional[List[str]] = Field(
-        None, description="Photos that must be BEFORE this date"
-    )
+    photos_after: list[str] | None = Field(None, description="Photos that must be AFTER this date")
+    photos_before: list[str] | None = Field(None, description="Photos that must be BEFORE this date")
 
     @field_validator("date")
     @classmethod
@@ -53,7 +49,7 @@ class EventAnchor(BaseModel):
 
     @field_validator("photos_after", "photos_before")
     @classmethod
-    def validate_photo_lists(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+    def validate_photo_lists(cls, v: list[str] | None) -> list[str] | None:
         """Validate photo lists are not empty."""
         if v is not None and len(v) == 0:
             raise ValueError("Photo list cannot be empty")
@@ -65,23 +61,21 @@ class KnownDateAnchor(BaseModel):
 
     file: str = Field(..., description="Photo file name (without path)")
     month: int = Field(..., ge=1, le=12, description="Month (1-12)")
-    year: Optional[int] = Field(None, ge=1900, le=2100, description="Year (optional)")
+    year: int | None = Field(None, ge=1900, le=2100, description="Year (optional)")
     type: Literal["hard", "soft"] = Field("soft", description="Constraint type")
 
 
 class Anchors(BaseModel):
     """Root anchors model."""
 
-    persons: Optional[List[PersonAnchor]] = Field(None, description="List of persons")
-    events: Optional[List[EventAnchor]] = Field(None, description="List of events")
-    known_dates: Optional[List[KnownDateAnchor]] = Field(
-        None, description="List of known dates"
-    )
+    persons: list[PersonAnchor] | None = Field(None, description="List of persons")
+    events: list[EventAnchor] | None = Field(None, description="List of events")
+    known_dates: list[KnownDateAnchor] | None = Field(None, description="List of known dates")
 
     model_config = {"extra": "forbid"}
 
 
-def load_anchors(anchors_path: Optional[Path] = None) -> Anchors:
+def load_anchors(anchors_path: Path | None = None) -> Anchors:
     """
     Load and validate anchors from YAML file.
 
@@ -111,14 +105,14 @@ def load_anchors(anchors_path: Optional[Path] = None) -> Anchors:
             return Anchors()
 
     # Load YAML
-    with open(anchors_path, "r") as f:
+    with open(anchors_path) as f:
         anchors_data = yaml.safe_load(f) or {}
 
     # Validate with Pydantic
     return Anchors.model_validate(anchors_data)
 
 
-def validate_anchors(anchors: Anchors) -> List[str]:
+def validate_anchors(anchors: Anchors) -> list[str]:
     """
     Validate anchor consistency and return warnings.
 
@@ -153,8 +147,7 @@ def validate_anchors(anchors: Anchors) -> List[str]:
         for event in hard_events:
             if event.date in event_dates:
                 warnings.append(
-                    f"Multiple hard events on same date {event.date}: "
-                    f"{event_dates[event.date]} and {event.name}"
+                    f"Multiple hard events on same date {event.date}: {event_dates[event.date]} and {event.name}"
                 )
             else:
                 event_dates[event.date] = event.name

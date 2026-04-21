@@ -4,15 +4,16 @@ Unit tests for configuration loading and validation.
 
 import tempfile
 from pathlib import Path
-import yaml
+
 import pytest
+import yaml
 
 from photochron.config import Config, load_config, save_config
 from photochron.config.models import (
-    ConfigPaths,
-    ConfigModels,
-    ConfigPipeline,
     ConfigContext,
+    ConfigModels,
+    ConfigPaths,
+    ConfigPipeline,
 )
 
 
@@ -102,7 +103,7 @@ def test_save_config():
         save_config(config, config_path)
 
         # Load saved config and verify
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             saved_data = yaml.safe_load(f)
 
         assert saved_data["paths"]["cache_dir"] == "/custom/cache"
@@ -147,5 +148,5 @@ def test_config_context_defaults():
     assert context.batch_size == 1
     assert context.min_decade_confidence == 0.3
     assert context.min_season_confidence == 0.4
-    assert context.use_fallback_on_failure == True
-    assert context.store_minimal_on_complete_failure == True
+    assert context.use_fallback_on_failure
+    assert context.store_minimal_on_complete_failure

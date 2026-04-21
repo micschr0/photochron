@@ -7,9 +7,9 @@ identification.
 """
 
 from .analyzer import (
+    AnalysisStrategy,
     ContextAnalyzer,
     ContextAnalyzerConfig,
-    AnalysisStrategy,
     FallbackStrategy,
     get_context_analyzer,
 )

@@ -3,10 +3,9 @@ Context layer stage: Analyze photo context using vision LLM.
 """
 
 import json
-import sqlite3
 import time
-from typing import List, Optional, Any, Dict
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -18,12 +17,12 @@ except ImportError:
     psutil = None
     PSUTIL_AVAILABLE = False
 
-from photochron.pipeline import PipelineStage, register_stage
 from photochron.config import get_config
-from photochron.store import get_store
 from photochron.context.analyzer import ContextAnalyzer, ContextAnalyzerConfig
-from photochron.models.ollama_client import OllamaConfig, ModelType
 from photochron.models import ContextCreate
+from photochron.models.ollama_client import ModelType, OllamaConfig
+from photochron.pipeline import PipelineStage, register_stage
+from photochron.store import get_store
 
 
 @register_stage
@@ -38,9 +37,7 @@ class ContextLayerStage(PipelineStage):
         # Convert string model names to ModelType enum values
         try:
             primary_model_type = self._get_model_type(self.context_config.primary_model)
-            fallback_model_type = self._get_model_type(
-                self.context_config.fallback_model
-            )
+            fallback_model_type = self._get_model_type(self.context_config.fallback_model)
         except ValueError as e:
             logger.error(f"Invalid model configuration: {e}")
             # Set degraded mode immediately
@@ -108,9 +105,7 @@ class ContextLayerStage(PipelineStage):
             for model_type in ModelType:
                 if model_type.value.lower() == model_name.lower():
                     return model_type
-            raise ValueError(
-                f"Unknown model name: {model_name}. Available models: {[m.value for m in ModelType]}"
-            )
+            raise ValueError(f"Unknown model name: {model_name}. Available models: {[m.value for m in ModelType]}")
 
     def _validate_configuration(self) -> None:
         """
@@ -125,9 +120,7 @@ class ContextLayerStage(PipelineStage):
 
             # Check Ollama server availability
             ollama_healthy = health.get("status") == "healthy"
-            server_available = health.get("ollama_health", {}).get(
-                "server_available", False
-            )
+            server_available = health.get("ollama_health", {}).get("server_available", False)
 
             if not ollama_healthy or not server_available:
                 logger.warning(
@@ -142,9 +135,7 @@ class ContextLayerStage(PipelineStage):
             # Check model availability from health check
             model_details = health.get("ollama_health", {}).get("model_details", {})
             primary_available = model_details.get("primary", {}).get("available", False)
-            fallback_available = model_details.get("fallback", {}).get(
-                "available", False
-            )
+            fallback_available = model_details.get("fallback", {}).get("available", False)
 
             self._available_models["primary"] = primary_available
             self._available_models["fallback"] = fallback_available
@@ -158,24 +149,16 @@ class ContextLayerStage(PipelineStage):
                 model_priority = []
 
                 if primary_available:
-                    primary_model_type = self._get_model_type(
-                        self.context_config.primary_model
-                    )
+                    primary_model_type = self._get_model_type(self.context_config.primary_model)
                     model_priority.append(primary_model_type)
-                    logger.info(
-                        f"Primary model '{self.context_config.primary_model}' is available"
-                    )
+                    logger.info(f"Primary model '{self.context_config.primary_model}' is available")
 
                 if fallback_available:
-                    fallback_model_type = self._get_model_type(
-                        self.context_config.fallback_model
-                    )
+                    fallback_model_type = self._get_model_type(self.context_config.fallback_model)
                     # Only add fallback if it's not already in the list (in case primary == fallback)
                     if fallback_model_type not in model_priority:
                         model_priority.append(fallback_model_type)
-                    logger.info(
-                        f"Fallback model '{self.context_config.fallback_model}' is available"
-                    )
+                    logger.info(f"Fallback model '{self.context_config.fallback_model}' is available")
 
                 # Update analyzer configuration
                 self.analyzer.config.model_priority = model_priority
@@ -216,11 +199,11 @@ class ContextLayerStage(PipelineStage):
         return "context_layer"
 
     @property
-    def dependencies(self) -> List[str]:
+    def dependencies(self) -> list[str]:
         return ["face_layer"]  # Can use face info as context
 
     @property
-    def health_status(self) -> Dict[str, Any]:
+    def health_status(self) -> dict[str, Any]:
         """Get current health status of the context analyzer."""
         return {
             "is_healthy": self._is_healthy,
@@ -228,7 +211,7 @@ class ContextLayerStage(PipelineStage):
             "available_models": self._available_models,
         }
 
-    def _check_memory_before_batch(self) -> Dict[str, Any]:
+    def _check_memory_before_batch(self) -> dict[str, Any]:
         """
         Check available memory before processing a batch.
 
@@ -254,13 +237,18 @@ class ContextLayerStage(PipelineStage):
                 return {
                     "status": "critical",
                     "available_mb": available_memory_mb,
-                    "message": f"Memory critically low: {available_memory_mb:.1f}MB < {self.context_config.memory_critical_threshold_mb}MB",
+                    "message": (
+                        f"Memory critically low: {available_memory_mb:.1f}MB < "
+                        f"{self.context_config.memory_critical_threshold_mb}MB"
+                    ),
                 }
             elif available_memory_mb < self.context_config.memory_warning_threshold_mb:
                 return {
                     "status": "warning",
                     "available_mb": available_memory_mb,
-                    "message": f"Low memory: {available_memory_mb:.1f}MB < {self.context_config.memory_warning_threshold_mb}MB",
+                    "message": (
+                        f"Low memory: {available_memory_mb:.1f}MB < {self.context_config.memory_warning_threshold_mb}MB"
+                    ),
                 }
             else:
                 return {
@@ -300,17 +288,11 @@ class ContextLayerStage(PipelineStage):
 
             # Optional: perform a fresh health check at runtime
             if not self._is_healthy:
-                logger.warning(
-                    "Context analyzer is not healthy. "
-                    "Attempting to re-check health status..."
-                )
+                logger.warning("Context analyzer is not healthy. Attempting to re-check health status...")
                 self._validate_configuration()
 
                 if self._degraded_mode or not self._is_healthy:
-                    logger.warning(
-                        "Context analyzer still not healthy after re-check. "
-                        "Skipping analysis."
-                    )
+                    logger.warning("Context analyzer still not healthy after re-check. Skipping analysis.")
                     self.mark_complete(run_id, photos_processed=0)
                     return
 
@@ -330,15 +312,11 @@ class ContextLayerStage(PipelineStage):
 
             # Validate batch_size is at least 1
             if batch_size <= 0:
-                logger.warning(
-                    f"Invalid batch_size {self.context_config.batch_size}, using 1 instead"
-                )
+                logger.warning(f"Invalid batch_size {self.context_config.batch_size}, using 1 instead")
                 batch_size = 1
 
             # Calculate total batches for progress reporting
-            total_batches = (
-                (total_photos + batch_size - 1) // batch_size if total_photos > 0 else 0
-            )
+            total_batches = (total_photos + batch_size - 1) // batch_size if total_photos > 0 else 0
 
             for i in range(0, total_photos, batch_size):
                 batch = photos[i : i + batch_size]
@@ -347,17 +325,13 @@ class ContextLayerStage(PipelineStage):
                 # Log batch-level progress with percentage
                 if total_photos > 0:
                     batch_percentage = (i / total_photos) * 100
-                    logger.info(
-                        f"Processing batch {batch_number}/{total_batches} ({batch_percentage:.1f}%)"
-                    )
+                    logger.info(f"Processing batch {batch_number}/{total_batches} ({batch_percentage:.1f}%)")
 
                 # Memory check before processing batch
                 memory_check_result = self._check_memory_before_batch()
                 if memory_check_result["status"] == "critical":
                     # Memory is critically low, skip this batch and wait
-                    batch_percentage = (
-                        (i / total_photos) * 100 if total_photos > 0 else 0
-                    )
+                    batch_percentage = (i / total_photos) * 100 if total_photos > 0 else 0
                     logger.warning(
                         f"Memory critically low ({memory_check_result['available_mb']:.1f}MB < "
                         f"{self.context_config.memory_critical_threshold_mb}MB threshold). "
@@ -375,7 +349,8 @@ class ContextLayerStage(PipelineStage):
                 elif memory_check_result["status"] in ["error", "unknown"]:
                     # Memory check failed or psutil unavailable, log warning but continue
                     logger.warning(
-                        f"Memory check returned '{memory_check_result['status']}' status: {memory_check_result.get('message', 'No message')}. "
+                        f"Memory check returned '{memory_check_result['status']}' status: "
+                        f"{memory_check_result.get('message', 'No message')}. "
                         f"Continuing with batch processing."
                     )
 
@@ -387,13 +362,9 @@ class ContextLayerStage(PipelineStage):
                             # Calculate percentage with 1 decimal place
                             if total_photos > 0:
                                 percentage = (processed / total_photos) * 100
-                                logger.info(
-                                    f"Processed {processed}/{total_photos} photos ({percentage:.1f}%)"
-                                )
+                                logger.info(f"Processed {processed}/{total_photos} photos ({percentage:.1f}%)")
                             else:
-                                logger.info(
-                                    f"Processed {processed}/{total_photos} photos"
-                                )
+                                logger.info(f"Processed {processed}/{total_photos} photos")
                     except Exception as e:
                         logger.warning(f"Failed to process photo {photo.id}: {e}")
                         failed += 1
@@ -403,13 +374,12 @@ class ContextLayerStage(PipelineStage):
             if total_photos > 0:
                 final_percentage = (processed / total_photos) * 100
                 logger.info(
-                    f"Context layer stage completed. Processed {processed}/{total_photos} photos ({final_percentage:.1f}%), "
-                    f"failed: {failed}"
+                    f"Context layer stage completed. Processed {processed}/{total_photos} photos "
+                    f"({final_percentage:.1f}%), failed: {failed}"
                 )
             else:
                 logger.info(
-                    f"Context layer stage completed. Processed {processed}/{total_photos} photos, "
-                    f"failed: {failed}"
+                    f"Context layer stage completed. Processed {processed}/{total_photos} photos, failed: {failed}"
                 )
             self.mark_complete(run_id, photos_processed=processed)
 
@@ -417,7 +387,7 @@ class ContextLayerStage(PipelineStage):
             logger.error(f"Context layer stage failed: {e}")
             raise
 
-    def _get_photos_without_context(self) -> List[Any]:
+    def _get_photos_without_context(self) -> list[Any]:
         """Query photos that have no context records yet."""
         store = get_store()
         with store.transaction() as conn:
@@ -436,15 +406,11 @@ class ContextLayerStage(PipelineStage):
         # Check if downsample path exists
         downsample_path = Path(photo.downsample_path)
         if not downsample_path.exists():
-            logger.warning(
-                f"Downsample path does not exist for photo {photo.id}: {downsample_path}"
-            )
+            logger.warning(f"Downsample path does not exist for photo {photo.id}: {downsample_path}")
             # Try to use original file path as fallback
             original_path = Path(photo.file_path)
             if not original_path.exists():
-                logger.error(
-                    f"Neither downsample nor original file exists for photo {photo.id}"
-                )
+                logger.error(f"Neither downsample nor original file exists for photo {photo.id}")
                 return
             image_path = str(original_path)
         else:

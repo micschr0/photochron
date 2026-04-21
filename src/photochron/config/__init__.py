@@ -7,22 +7,23 @@ default values from the architecture specification.
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
+
 import yaml
 
 from .models import (
     Config,
-    ConfigModels,
-    ConfigPipeline,
-    ConfigPaths,
-    ConfigIngestion,
-    ConfigFace,
     ConfigContext,
+    ConfigFace,
+    ConfigIngestion,
     ConfigLogging,
+    ConfigModels,
+    ConfigPaths,
+    ConfigPipeline,
 )
 
 
-def load_config(config_path: Optional[Path] = None) -> Config:
+def load_config(config_path: Path | None = None) -> Config:
     """
     Load configuration from file, environment variables, and defaults.
 
@@ -48,7 +49,7 @@ def load_config(config_path: Optional[Path] = None) -> Config:
             return _create_default_config()
 
     # Load YAML
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_data = yaml.safe_load(f) or {}
 
     # Migrate to current version if needed
@@ -112,7 +113,7 @@ def _create_default_config() -> Config:
     )
 
 
-def _apply_env_overrides(config_data: Dict[str, Any]) -> Dict[str, Any]:
+def _apply_env_overrides(config_data: dict[str, Any]) -> dict[str, Any]:
     """
     Apply environment variable overrides to configuration.
 
@@ -159,7 +160,7 @@ def _apply_env_overrides(config_data: Dict[str, Any]) -> Dict[str, Any]:
     return config_data
 
 
-def migrate_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+def migrate_config(config_data: dict[str, Any]) -> dict[str, Any]:
     """
     Migrate configuration data to current version.
 
@@ -220,7 +221,7 @@ def save_config(config: Config, config_path: Path) -> None:
 
 
 # Global config instance
-_config: Optional[Config] = None
+_config: Config | None = None
 
 
 def get_config() -> Config:

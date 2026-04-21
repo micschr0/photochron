@@ -175,9 +175,7 @@ def combine_signals(
 
     weighted_year = numerator / denom
 
-    total_weight_max = (
-        weights.get("face", 0.0) + weights.get("llm", 0.0) + weights.get("medium", 0.0)
-    )
+    total_weight_max = weights.get("face", 0.0) + weights.get("llm", 0.0) + weights.get("medium", 0.0)
     normalized = denom / total_weight_max if total_weight_max > 0 else 0.0
     confidence = max(0.0, min(1.0, normalized))
 
@@ -195,6 +193,7 @@ def rank_estimates(
 
     Photos with missing year are placed at the end, preserving insertion order.
     """
+
     def key(item: tuple[int, DateEstimate]) -> tuple[int, int, int, int]:
         photo_id, est = item
         has_year = 0 if est.year is not None else 1

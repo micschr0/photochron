@@ -2,20 +2,17 @@
 Unit tests for database store operations.
 """
 
-import pytest
 from datetime import datetime
 
-from photochron.store import DatabaseStore
-from photochron.store.schema import create_schema, get_schema_version
-from photochron.store.queries import QueryHelper
 from photochron.models import (
-    PhotoCreate,
-    PersonCreate,
-    FaceCreate,
     ContextCreate,
-    RankingCreate,
+    FaceCreate,
+    PersonCreate,
+    PhotoCreate,
     PipelineRunCreate,
 )
+from photochron.store.queries import QueryHelper
+from photochron.store.schema import create_schema, get_schema_version
 
 
 def test_database_store_creation(database_store):
@@ -44,9 +41,7 @@ def test_transaction_context_manager(database_store):
 
     # Table should exist after transaction
     with database_store.transaction() as conn:
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='test'"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
         assert cursor.fetchone() is not None
 
 
@@ -271,9 +266,7 @@ def test_query_helper_pipeline_run_operations(database_store):
         assert retrieved.status == "running"
 
         # Update pipeline run
-        helper.update_pipeline_run(
-            "test_run_123", status="completed", photos_processed=10
-        )
+        helper.update_pipeline_run("test_run_123", status="completed", photos_processed=10)
 
         # Verify update
         updated = helper.get_pipeline_run("test_run_123")

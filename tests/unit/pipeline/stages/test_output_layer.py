@@ -24,9 +24,7 @@ def _seed_run(helper, run_id: str) -> None:
     )
 
 
-def _seed_photo_and_ranking(
-    helper, file_path: Path, sort_rank: int, year: int | None, confidence: float
-) -> int:
+def _seed_photo_and_ranking(helper, file_path: Path, sort_rank: int, year: int | None, confidence: float) -> int:
     photo_id = helper.insert_photo(
         PhotoCreate(
             content_hash=f"hash_{sort_rank}",
@@ -42,9 +40,7 @@ def _seed_photo_and_ranking(
             estimated_month=None,
             confidence=confidence,
             review_needed=confidence < 0.5,
-            ranking_json=json.dumps(
-                {"file_path": str(file_path), "year": year, "signals": {}}
-            ),
+            ranking_json=json.dumps({"file_path": str(file_path), "year": year, "signals": {}}),
         )
     )
     return photo_id
@@ -53,15 +49,16 @@ def _seed_photo_and_ranking(
 @pytest.fixture
 def patched_store(database_store):
     with (
-        patch("photochron.pipeline.stages.output_layer.get_store", return_value=database_store),
+        patch(
+            "photochron.pipeline.stages.output_layer.get_store",
+            return_value=database_store,
+        ),
         patch("photochron.pipeline.get_store", return_value=database_store),
     ):
         yield database_store
 
 
-def test_output_layer_writes_renamed_and_enriched_copies(
-    patched_store, mock_config, tmp_path
-):
+def test_output_layer_writes_renamed_and_enriched_copies(patched_store, mock_config, tmp_path):
     src = tmp_path / "input" / "IMG_042.jpg"
     _make_jpeg(src)
 
@@ -72,9 +69,7 @@ def test_output_layer_writes_renamed_and_enriched_copies(
         _seed_photo_and_ranking(helper, src, sort_rank=0, year=1985, confidence=0.8)
         _seed_run(helper, "run_out")
 
-    with patch(
-        "photochron.pipeline.stages.output_layer.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.output_layer.get_config", return_value=mock_config):
         OutputLayerStage().run("run_out", "cfg")
 
     renamed_dir = tmp_path / "out" / "renamed"
@@ -94,9 +89,7 @@ def test_output_layer_writes_renamed_and_enriched_copies(
     assert "IMG_042.jpg" in timeline
 
 
-def test_output_layer_never_writes_to_original_file(
-    patched_store, mock_config, tmp_path
-):
+def test_output_layer_never_writes_to_original_file(patched_store, mock_config, tmp_path):
     src = tmp_path / "input" / "IMG_042.jpg"
     _make_jpeg(src)
     original_bytes = src.read_bytes()
@@ -108,17 +101,13 @@ def test_output_layer_never_writes_to_original_file(
         _seed_photo_and_ranking(helper, src, sort_rank=0, year=1985, confidence=0.8)
         _seed_run(helper, "run_nondestruct")
 
-    with patch(
-        "photochron.pipeline.stages.output_layer.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.output_layer.get_config", return_value=mock_config):
         OutputLayerStage().run("run_nondestruct", "cfg")
 
     assert src.read_bytes() == original_bytes
 
 
-def test_output_layer_handles_missing_source_files(
-    patched_store, mock_config, tmp_path
-):
+def test_output_layer_handles_missing_source_files(patched_store, mock_config, tmp_path):
     missing = tmp_path / "input" / "gone.jpg"
     mock_config.paths.output_dir = str(tmp_path / "out")
 
@@ -127,9 +116,7 @@ def test_output_layer_handles_missing_source_files(
         _seed_photo_and_ranking(helper, missing, sort_rank=0, year=1985, confidence=0.8)
         _seed_run(helper, "run_missing")
 
-    with patch(
-        "photochron.pipeline.stages.output_layer.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.output_layer.get_config", return_value=mock_config):
         OutputLayerStage().run("run_missing", "cfg")
 
     report = json.loads((tmp_path / "out" / "photochron_report.json").read_text())
@@ -142,9 +129,7 @@ def test_output_layer_with_no_rankings_is_noop(patched_store, mock_config, tmp_p
         helper = patched_store.get_query_helper(conn)
         _seed_run(helper, "run_empty")
 
-    with patch(
-        "photochron.pipeline.stages.output_layer.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.output_layer.get_config", return_value=mock_config):
         OutputLayerStage().run("run_empty", "cfg")
 
     # no output dir should be created since early-return happens before mkdir

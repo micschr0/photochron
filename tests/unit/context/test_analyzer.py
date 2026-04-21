@@ -11,25 +11,22 @@ Tests use mocked LLM responses to verify strategy behavior without requiring
 a real Ollama server.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
-import time
 import logging
-from typing import Optional
-from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 
 from photochron.context.analyzer import (
+    AnalysisStrategy,
     ContextAnalyzer,
     ContextAnalyzerConfig,
-    AnalysisStrategy,
     FallbackStrategy,
     get_context_analyzer,
 )
 from photochron.models.ollama_client import (
-    OllamaClient,
-    OllamaConfig,
-    ModelType,
     ContextAnalysisResult,
+    ModelType,
+    OllamaClient,
 )
 
 
@@ -43,9 +40,7 @@ class TestContextAnalyzerStrategies:
         mock_client.analyze_image_context = Mock()
         mock_client.get_prompt_template = Mock(return_value="Test prompt template")
         mock_client.connect = Mock(return_value=True)
-        mock_client.health_check = Mock(
-            return_value={"status": "healthy", "server_available": True}
-        )
+        mock_client.health_check = Mock(return_value={"status": "healthy", "server_available": True})
         return mock_client
 
     @pytest.fixture
@@ -102,9 +97,7 @@ class TestContextAnalyzerStrategies:
             hypothesis_notes=None,
         )
 
-    def test_analyze_default_strategy_success(
-        self, mock_ollama_client, mock_context_result
-    ):
+    def test_analyze_default_strategy_success(self, mock_ollama_client, mock_context_result):
         """Test DEFAULT strategy succeeds with primary model."""
         # Setup - disable retries for predictable call count
         config = ContextAnalyzerConfig(
@@ -170,9 +163,7 @@ class TestContextAnalyzerStrategies:
         assert calls[0].kwargs["model_name"] == "llava-next:7b"
         assert calls[1].kwargs["model_name"] == "moondream2"
 
-    def test_analyze_default_strategy_fallback_on_primary_failure(
-        self, mock_ollama_client, mock_context_result
-    ):
+    def test_analyze_default_strategy_fallback_on_primary_failure(self, mock_ollama_client, mock_context_result):
         """Test DEFAULT strategy uses fallback model when primary fails."""
         # Setup - disable retries for predictable call count
         config = ContextAnalyzerConfig(
@@ -211,9 +202,7 @@ class TestContextAnalyzerStrategies:
         analyzer = ContextAnalyzer(ollama_client=mock_ollama_client, config=config)
 
         # Mock low confidence result
-        mock_ollama_client.analyze_image_context.return_value = (
-            mock_context_result_low_confidence
-        )
+        mock_ollama_client.analyze_image_context.return_value = mock_context_result_low_confidence
 
         # Execute
         with patch("pathlib.Path.exists", return_value=True):
@@ -226,9 +215,7 @@ class TestContextAnalyzerStrategies:
         assert result.decade_confidence == 0.0
         mock_ollama_client.analyze_image_context.assert_called_once()
 
-    def test_analyze_aggressive_strategy_tries_multiple_models_prompts(
-        self, mock_ollama_client, mock_context_result
-    ):
+    def test_analyze_aggressive_strategy_tries_multiple_models_prompts(self, mock_ollama_client, mock_context_result):
         """Test AGGRESSIVE strategy tries multiple models and prompts."""
         # Setup - disable retries to avoid 6 combinations × 3 retries = 18 calls
         config = ContextAnalyzerConfig(
@@ -265,9 +252,7 @@ class TestContextAnalyzerStrategies:
         prompt_calls = mock_ollama_client.get_prompt_template.call_args_list
         assert len(prompt_calls) >= 6
 
-    def test_analyze_aggressive_strategy_returns_best_confidence(
-        self, mock_ollama_client
-    ):
+    def test_analyze_aggressive_strategy_returns_best_confidence(self, mock_ollama_client):
         """Test AGGRESSIVE strategy returns result with highest overall confidence."""
         # Setup - disable retries for predictable call count
         config = ContextAnalyzerConfig(
@@ -324,9 +309,7 @@ class TestContextAnalyzerStrategies:
         analyzer = ContextAnalyzer(ollama_client=mock_ollama_client, config=config)
 
         # Mock high confidence result on first attempt
-        mock_ollama_client.analyze_image_context.return_value = (
-            mock_context_result_high_confidence
-        )
+        mock_ollama_client.analyze_image_context.return_value = mock_context_result_high_confidence
 
         # Execute
         with patch("pathlib.Path.exists", return_value=True):
@@ -350,9 +333,7 @@ class TestContextAnalyzerStrategies:
         analyzer = ContextAnalyzer(ollama_client=mock_ollama_client, config=config)
 
         # Mock low confidence result (decade_confidence=0.2 < 0.3)
-        mock_ollama_client.analyze_image_context.return_value = (
-            mock_context_result_low_confidence
-        )
+        mock_ollama_client.analyze_image_context.return_value = mock_context_result_low_confidence
 
         # Execute
         with patch("pathlib.Path.exists", return_value=True):
@@ -380,18 +361,14 @@ class TestContextAnalyzerStrategies:
         analyzer = ContextAnalyzer(ollama_client=mock_ollama_client, config=config)
 
         # Mock high confidence result (all confidences above thresholds)
-        mock_ollama_client.analyze_image_context.return_value = (
-            mock_context_result_high_confidence
-        )
+        mock_ollama_client.analyze_image_context.return_value = mock_context_result_high_confidence
 
         # Execute
         with patch("pathlib.Path.exists", return_value=True):
             result = analyzer.analyze("test.jpg")
 
         # Verify
-        assert (
-            result == mock_context_result_high_confidence
-        )  # Should accept high confidence result
+        assert result == mock_context_result_high_confidence  # Should accept high confidence result
 
     def test_analyze_conservative_strategy_tries_uncertainty_handling(
         self,
@@ -423,9 +400,7 @@ class TestContextAnalyzerStrategies:
                 return "Uncertainty handling prompt"
             return "Default prompt"
 
-        mock_ollama_client.get_prompt_template.side_effect = (
-            get_prompt_template_side_effect
-        )
+        mock_ollama_client.get_prompt_template.side_effect = get_prompt_template_side_effect
 
         # Execute
         with patch("pathlib.Path.exists", return_value=True):
@@ -439,9 +414,7 @@ class TestContextAnalyzerStrategies:
         calls = mock_ollama_client.analyze_image_context.call_args_list
         assert calls[1].kwargs["prompt_template"] == "Uncertainty handling prompt"
 
-    def test_analyze_fast_strategy_uses_simple_prompt(
-        self, mock_ollama_client, mock_context_result
-    ):
+    def test_analyze_fast_strategy_uses_simple_prompt(self, mock_ollama_client, mock_context_result):
         """Test FAST strategy uses simple fallback prompt for speed."""
         # Setup - disable retries for predictable call count
         config = ContextAnalyzerConfig(
@@ -462,9 +435,7 @@ class TestContextAnalyzerStrategies:
                 return "Simple fallback prompt"
             return "Default prompt"
 
-        mock_ollama_client.get_prompt_template.side_effect = (
-            get_prompt_template_side_effect
-        )
+        mock_ollama_client.get_prompt_template.side_effect = get_prompt_template_side_effect
 
         # Execute
         with patch("pathlib.Path.exists", return_value=True):
@@ -479,9 +450,7 @@ class TestContextAnalyzerStrategies:
             use_base64=False,
         )
 
-    def test_analyze_fast_strategy_no_retries(
-        self, mock_ollama_client, mock_context_result
-    ):
+    def test_analyze_fast_strategy_no_retries(self, mock_ollama_client, mock_context_result):
         """Test FAST strategy should work with retries disabled."""
         # Setup - Note: FAST strategy doesn't disable retries by itself,
         # but we can test with retries disabled in config
@@ -529,9 +498,7 @@ class TestContextAnalyzerStrategies:
         # Should use FAST strategy logic (simple_fallback prompt)
         mock_ollama_client.get_prompt_template.assert_called_with("simple_fallback")
 
-    def test_analyze_fallback_strategy_application(
-        self, mock_ollama_client, mock_context_result
-    ):
+    def test_analyze_fallback_strategy_application(self, mock_ollama_client, mock_context_result):
         """Test fallback strategy is applied when primary analysis fails."""
         # Setup with SIMPLE fallback and disable retries
         config = ContextAnalyzerConfig(
@@ -543,9 +510,7 @@ class TestContextAnalyzerStrategies:
 
         # Mock the model priority getters
         analyzer._get_primary_model_name = Mock(return_value="llava-next:7b")
-        analyzer._get_fallback_model_name = Mock(
-            return_value=None
-        )  # No internal fallback
+        analyzer._get_fallback_model_name = Mock(return_value=None)  # No internal fallback
 
         # Mock primary analysis returns None, fallback succeeds
         mock_ollama_client.analyze_image_context.side_effect = [
@@ -560,9 +525,7 @@ class TestContextAnalyzerStrategies:
                 return "Simple fallback prompt"
             return "Default prompt"
 
-        mock_ollama_client.get_prompt_template.side_effect = (
-            get_prompt_template_side_effect
-        )
+        mock_ollama_client.get_prompt_template.side_effect = get_prompt_template_side_effect
 
         # Execute
         with patch("pathlib.Path.exists", return_value=True):
@@ -588,9 +551,7 @@ class TestContextAnalyzerStrategies:
 
         # Mock the model priority getters
         analyzer._get_primary_model_name = Mock(return_value="llava-next:7b")
-        analyzer._get_fallback_model_name = Mock(
-            return_value=None
-        )  # No internal fallback
+        analyzer._get_fallback_model_name = Mock(return_value=None)  # No internal fallback
 
         # Mock analysis fails
         mock_ollama_client.analyze_image_context.return_value = None
@@ -603,9 +564,7 @@ class TestContextAnalyzerStrategies:
         assert result is None  # No fallback, should return None
         mock_ollama_client.analyze_image_context.assert_called_once()
 
-    def test_analyze_unknown_strategy_falls_back_to_default(
-        self, mock_ollama_client, mock_context_result, caplog
-    ):
+    def test_analyze_unknown_strategy_falls_back_to_default(self, mock_ollama_client, mock_context_result, caplog):
         """Test unknown strategy falls back to DEFAULT strategy."""
         # Setup with a mock strategy (not in enum) and disable retries
         config = ContextAnalyzerConfig(
@@ -730,9 +689,7 @@ class TestContextAnalyzerStrategies:
         assert cleaned.season_confidence is None
         assert cleaned.event_hint is None
         assert cleaned.event_confidence is None
-        assert (
-            cleaned.alternative_decades is None
-        )  # Should be cleared when decade is cleared
+        assert cleaned.alternative_decades is None  # Should be cleared when decade is cleared
 
         # Verify other fields remain
         assert cleaned.photo_medium == "print_scan"

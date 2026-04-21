@@ -2,9 +2,8 @@
 Unit tests for DatabaseStore methods.
 """
 
-import pytest
 import sqlite3
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 from photochron.store import DatabaseStore
 from photochron.store.queries import QueryHelper

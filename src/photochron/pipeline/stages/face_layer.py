@@ -3,17 +3,17 @@ Face layer stage: Detect faces, compute embeddings, estimate ages.
 """
 
 import sqlite3
-from typing import List, Optional, Any, Dict, Tuple
 from pathlib import Path
-import numpy as np
 
+import numpy as np
 from loguru import logger
 from PIL import Image
-from photochron.pipeline import PipelineStage, register_stage
+
 from photochron.config import get_config
-from photochron.store import get_store
 from photochron.face.insightface_wrapper import InsightFaceWrapper
 from photochron.models import FaceCreate
+from photochron.pipeline import PipelineStage, register_stage
+from photochron.store import get_store
 
 
 @register_stage
@@ -35,7 +35,7 @@ class FaceLayerStage(PipelineStage):
         return "face_layer"
 
     @property
-    def dependencies(self) -> List[str]:
+    def dependencies(self) -> list[str]:
         return ["ingestion"]  # Depends on photos being ingested
 
     def run(self, run_id: str, config_hash: str) -> None:
@@ -82,9 +82,7 @@ class FaceLayerStage(PipelineStage):
                         logger.warning(f"Failed to process photo {photo_id}: {e}")
                         continue
 
-            logger.info(
-                f"Face layer stage completed. Processed {processed}/{total_photos} photos"
-            )
+            logger.info(f"Face layer stage completed. Processed {processed}/{total_photos} photos")
             self.mark_complete(run_id, photos_processed=processed)
 
         except Exception as e:
@@ -125,7 +123,7 @@ class FaceLayerStage(PipelineStage):
     def _crop_face_with_margin(
         self,
         image: np.ndarray,
-        bbox: Tuple[int, int, int, int],
+        bbox: tuple[int, int, int, int],
         margin_ratio: float = 0.1,
     ) -> np.ndarray:
         """
@@ -156,9 +154,7 @@ class FaceLayerStage(PipelineStage):
 
         # Ensure valid crop
         if x2 <= x1 or y2 <= y1:
-            raise ValueError(
-                f"Invalid bounding box after margin: ({x1}, {y1}, {x2}, {y2})"
-            )
+            raise ValueError(f"Invalid bounding box after margin: ({x1}, {y1}, {x2}, {y2})")
 
         return image[y1:y2, x1:x2]
 
@@ -170,7 +166,7 @@ class FaceLayerStage(PipelineStage):
             columns = [row[1] for row in cursor.fetchall()]
             return "embedding" in columns
 
-    def _get_known_persons_with_embeddings(self) -> List[Dict]:
+    def _get_known_persons_with_embeddings(self) -> list[dict]:
         """
         Retrieve known persons with their embeddings (if available).
 
@@ -186,15 +182,9 @@ class FaceLayerStage(PipelineStage):
             has_embedding = "embedding" in columns
 
             if has_embedding:
-                cursor = conn.execute(
-                    "SELECT id, person_id, name, birthday, embedding FROM persons"
-                )
+                cursor = conn.execute("SELECT id, person_id, name, birthday, embedding FROM persons")
                 for row in cursor.fetchall():
-                    embedding = (
-                        np.frombuffer(row["embedding"], dtype=np.float32)
-                        if row["embedding"]
-                        else None
-                    )
+                    embedding = np.frombuffer(row["embedding"], dtype=np.float32) if row["embedding"] else None
                     persons.append(
                         {
                             "id": row["id"],
@@ -205,9 +195,7 @@ class FaceLayerStage(PipelineStage):
                         }
                     )
             else:
-                cursor = conn.execute(
-                    "SELECT id, person_id, name, birthday FROM persons"
-                )
+                cursor = conn.execute("SELECT id, person_id, name, birthday FROM persons")
                 for row in cursor.fetchall():
                     persons.append(
                         {
@@ -229,7 +217,7 @@ class FaceLayerStage(PipelineStage):
             return 0.0
         return float(np.dot(a, b) / (norm_a * norm_b))
 
-    def _match_person(self, embedding: np.ndarray) -> Optional[int]:
+    def _match_person(self, embedding: np.ndarray) -> int | None:
         """
         Match embedding against known persons.
 
@@ -310,7 +298,7 @@ class FaceLayerStage(PipelineStage):
             self._store_faces(photo_id, faces)
             logger.info(f"Stored {len(faces)} faces for photo {photo_id}")
 
-    def _store_faces(self, photo_id: int, faces: List[Dict]) -> None:
+    def _store_faces(self, photo_id: int, faces: list[dict]) -> None:
         """Store face detection results in database."""
         if not faces:
             return
@@ -324,11 +312,7 @@ class FaceLayerStage(PipelineStage):
                 # Insert new face records
                 for face in faces:
                     # Convert embedding numpy array to bytes
-                    embedding_bytes = (
-                        face["embedding"].tobytes()
-                        if face["embedding"] is not None
-                        else None
-                    )
+                    embedding_bytes = face["embedding"].tobytes() if face["embedding"] is not None else None
 
                     face_record = FaceCreate(
                         photo_id=face["photo_id"],
@@ -345,8 +329,9 @@ class FaceLayerStage(PipelineStage):
                     # Insert record
                     conn.execute(
                         """
-                        INSERT INTO faces 
-                        (photo_id, person_id, embedding, age_estimate, age_std, confidence, bbox_x1, bbox_y1, bbox_x2, bbox_y2)
+                        INSERT INTO faces
+                        (photo_id, person_id, embedding, age_estimate, age_std, confidence,
+                         bbox_x1, bbox_y1, bbox_x2, bbox_y2)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (

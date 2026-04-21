@@ -2,18 +2,18 @@
 Ingestion stage: Read photos, compute hashes, downsample, extract EXIF.
 """
 
-import os
 import hashlib
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any
 
-from loguru import logger
-from PIL import Image
 import imagehash
 import piexif
-from photochron.pipeline import PipelineStage, register_stage
+from loguru import logger
+from PIL import Image
+
 from photochron.config import get_config
+from photochron.pipeline import PipelineStage, register_stage
 from photochron.store import get_store
 
 
@@ -25,14 +25,14 @@ class IngestionStage(PipelineStage):
         """Initialize ingestion stage with configuration."""
         self.config = get_config()
         self.supported_extensions = set(self.config.ingestion.supported_formats)
-        self._hash_cache: Dict[Path, str] = {}  # Cache of file path to perceptual hash
+        self._hash_cache: dict[Path, str] = {}  # Cache of file path to perceptual hash
 
     @property
     def name(self) -> str:
         return "ingestion"
 
     @property
-    def dependencies(self) -> List[str]:
+    def dependencies(self) -> list[str]:
         return []  # First stage, no dependencies
 
     def run(self, run_id: str, config_hash: str) -> None:
@@ -78,12 +78,10 @@ class IngestionStage(PipelineStage):
                 logger.error(f"Failed to process {file_path}: {e}")
                 # Continue with next file
 
-        logger.info(
-            f"Ingestion complete. Processed {processed_count}/{total_files} files successfully"
-        )
+        logger.info(f"Ingestion complete. Processed {processed_count}/{total_files} files successfully")
         self.mark_complete(run_id, photos_processed=processed_count)
 
-    def _scan_image_files(self, input_dir: Path) -> List[Path]:
+    def _scan_image_files(self, input_dir: Path) -> list[Path]:
         """Scan directory for image files with supported extensions."""
         if not input_dir.exists():
             raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
@@ -103,9 +101,7 @@ class IngestionStage(PipelineStage):
 
         return sorted(unique_files)
 
-    def _process_image(
-        self, file_path: Path, downsampled_dir: Path, run_id: str
-    ) -> None:
+    def _process_image(self, file_path: Path, downsampled_dir: Path, run_id: str) -> None:
         """Process a single image file."""
         try:
             # Compute content hash first (for duplicate detection)
@@ -113,9 +109,7 @@ class IngestionStage(PipelineStage):
 
             # Check if photo with this content hash already exists
             existing_photo = self._get_existing_photo(content_hash)
-            cached_perceptual_hash = (
-                existing_photo.get("perceptual_hash") if existing_photo else None
-            )
+            cached_perceptual_hash = existing_photo.get("perceptual_hash") if existing_photo else None
 
             with Image.open(file_path) as img:
                 # Convert to RGB if necessary
@@ -136,18 +130,12 @@ class IngestionStage(PipelineStage):
 
                 # Create downsampled version (skip if already exists and cached)
                 downsampled_path = None
-                if not cached_perceptual_hash or not existing_photo.get(
-                    "downsample_path"
-                ):
-                    downsampled_path = self._create_downsampled_image(
-                        img, phash_hex, downsampled_dir, format_name
-                    )
+                if not cached_perceptual_hash or not existing_photo.get("downsample_path"):
+                    downsampled_path = self._create_downsampled_image(img, phash_hex, downsampled_dir, format_name)
                 else:
                     # Use existing downsampled path
                     downsampled_path_str = existing_photo.get("downsample_path")
-                    downsampled_path = (
-                        Path(downsampled_path_str) if downsampled_path_str else None
-                    )
+                    downsampled_path = Path(downsampled_path_str) if downsampled_path_str else None
 
                 # Extract EXIF metadata (always extract, in case metadata changed)
                 exif_data = self._extract_exif_metadata(file_path)
@@ -156,9 +144,7 @@ class IngestionStage(PipelineStage):
                 self._store_photo_metadata(
                     content_hash=content_hash,
                     file_path=str(file_path),
-                    downsampled_path=str(downsampled_path)
-                    if downsampled_path
-                    else None,
+                    downsampled_path=str(downsampled_path) if downsampled_path else None,
                     perceptual_hash=phash_hex,
                     width=width,
                     height=height,
@@ -179,7 +165,7 @@ class IngestionStage(PipelineStage):
         phash_hex: str,
         downsampled_dir: Path,
         original_format: str,
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Create downsampled version of image (max size from config)."""
         max_size = self.config.ingestion.max_downsample_size
         width, height = img.size
@@ -200,9 +186,7 @@ class IngestionStage(PipelineStage):
         resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         # Determine output format (use JPEG for photos, PNG for transparency)
-        output_format = (
-            "JPEG" if original_format in ("JPEG", "JPG", "HEIC", "RAW") else "PNG"
-        )
+        output_format = "JPEG" if original_format in ("JPEG", "JPG", "HEIC", "RAW") else "PNG"
         output_ext = ".jpg" if output_format == "JPEG" else ".png"
 
         # Create filename from perceptual hash
@@ -217,7 +201,7 @@ class IngestionStage(PipelineStage):
         resized_img.save(output_path, format=output_format, **save_kwargs)
         return output_path
 
-    def _extract_exif_metadata(self, file_path: Path) -> Dict[str, Any]:
+    def _extract_exif_metadata(self, file_path: Path) -> dict[str, Any]:
         """Extract EXIF metadata from image file."""
         exif_data = {}
 
@@ -226,13 +210,8 @@ class IngestionStage(PipelineStage):
             exif_dict = piexif.load(str(file_path))
 
             # Extract DateTimeOriginal
-            if (
-                "Exif" in exif_dict
-                and piexif.ExifIFD.DateTimeOriginal in exif_dict["Exif"]
-            ):
-                dt_str = exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal].decode(
-                    "utf-8"
-                )
+            if "Exif" in exif_dict and piexif.ExifIFD.DateTimeOriginal in exif_dict["Exif"]:
+                dt_str = exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal].decode("utf-8")
                 # Convert to ISO 8601 format
                 try:
                     dt = datetime.strptime(dt_str, "%Y:%m:%d %H:%M:%S")
@@ -243,13 +222,9 @@ class IngestionStage(PipelineStage):
             # Extract camera make and model
             if "0th" in exif_dict:
                 if piexif.ImageIFD.Make in exif_dict["0th"]:
-                    exif_data["make"] = (
-                        exif_dict["0th"][piexif.ImageIFD.Make].decode("utf-8").strip()
-                    )
+                    exif_data["make"] = exif_dict["0th"][piexif.ImageIFD.Make].decode("utf-8").strip()
                 if piexif.ImageIFD.Model in exif_dict["0th"]:
-                    exif_data["model"] = (
-                        exif_dict["0th"][piexif.ImageIFD.Model].decode("utf-8").strip()
-                    )
+                    exif_data["model"] = exif_dict["0th"][piexif.ImageIFD.Model].decode("utf-8").strip()
 
             # Extract GPS coordinates if available and enabled in config
             if self.config.ingestion.extract_gps and "GPS" in exif_dict:
@@ -289,16 +264,11 @@ class IngestionStage(PipelineStage):
 
         return exif_data
 
-    def _parse_gps_coordinates(
-        self, gps_data: Dict
-    ) -> Tuple[Optional[float], Optional[float]]:
+    def _parse_gps_coordinates(self, gps_data: dict) -> tuple[float | None, float | None]:
         """Parse GPS coordinates from EXIF GPS dictionary."""
         try:
             # Parse latitude
-            if (
-                piexif.GPSIFD.GPSLatitude in gps_data
-                and piexif.GPSIFD.GPSLatitudeRef in gps_data
-            ):
+            if piexif.GPSIFD.GPSLatitude in gps_data and piexif.GPSIFD.GPSLatitudeRef in gps_data:
                 lat = self._convert_gps_coordinate(
                     gps_data[piexif.GPSIFD.GPSLatitude],
                     gps_data[piexif.GPSIFD.GPSLatitudeRef],
@@ -307,10 +277,7 @@ class IngestionStage(PipelineStage):
                 lat = None
 
             # Parse longitude
-            if (
-                piexif.GPSIFD.GPSLongitude in gps_data
-                and piexif.GPSIFD.GPSLongitudeRef in gps_data
-            ):
+            if piexif.GPSIFD.GPSLongitude in gps_data and piexif.GPSIFD.GPSLongitudeRef in gps_data:
                 lon = self._convert_gps_coordinate(
                     gps_data[piexif.GPSIFD.GPSLongitude],
                     gps_data[piexif.GPSIFD.GPSLongitudeRef],
@@ -322,7 +289,7 @@ class IngestionStage(PipelineStage):
         except Exception:
             return None, None
 
-    def _convert_gps_coordinate(self, coord: Tuple, ref: bytes) -> float:
+    def _convert_gps_coordinate(self, coord: tuple, ref: bytes) -> float:
         """Convert GPS coordinate from (degrees, minutes, seconds) to decimal degrees."""
         degrees, minutes, seconds = coord
         degrees = degrees[0] / degrees[1] if isinstance(degrees, tuple) else degrees
@@ -345,7 +312,7 @@ class IngestionStage(PipelineStage):
                 md5_hash.update(chunk)
         return md5_hash.hexdigest()
 
-    def _get_existing_photo(self, content_hash: str) -> Optional[Dict[str, Any]]:
+    def _get_existing_photo(self, content_hash: str) -> dict[str, Any] | None:
         """Check if a photo with this content hash already exists in the database."""
         store = get_store()
         with store.transaction() as conn:
@@ -374,14 +341,14 @@ class IngestionStage(PipelineStage):
         self,
         content_hash: str,
         file_path: str,
-        downsampled_path: Optional[str],
+        downsampled_path: str | None,
         perceptual_hash: str,
         width: int,
         height: int,
         format_name: str,
-        exif_datetime: Optional[str],
-        make: Optional[str],
-        model: Optional[str],
+        exif_datetime: str | None,
+        make: str | None,
+        model: str | None,
         run_id: str,
     ) -> None:
         """Store photo metadata in the database."""

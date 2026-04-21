@@ -72,9 +72,7 @@ class RankingEngineStage(PipelineStage):
 
         apply_constraints(estimates, constraint_set)
 
-        ranked = rank_estimates(
-            [(photo_id, estimate) for photo_id, _, estimate in estimates]
-        )
+        ranked = rank_estimates([(photo_id, estimate) for photo_id, _, estimate in estimates])
         rank_by_photo: dict[int, int] = dict(ranked)
 
         self._write_rankings(estimates, rank_by_photo)

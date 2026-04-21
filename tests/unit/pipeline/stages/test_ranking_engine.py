@@ -20,9 +20,7 @@ def _seed_photo(helper, name: str, exif: str | None = None) -> int:
     )
 
 
-def _seed_context(
-    helper, photo_id: int, decade: str | None, medium: str = "print_scan"
-) -> None:
+def _seed_context(helper, photo_id: int, decade: str | None, medium: str = "print_scan") -> None:
     helper.insert_context(
         ContextCreate(
             photo_id=photo_id,
@@ -76,7 +74,10 @@ def _setup_run(helper, run_id: str, constraints_json: str | None = None):
 @pytest.fixture
 def patched_store(database_store):
     with (
-        patch("photochron.pipeline.stages.ranking_engine.get_store", return_value=database_store),
+        patch(
+            "photochron.pipeline.stages.ranking_engine.get_store",
+            return_value=database_store,
+        ),
         patch("photochron.pipeline.get_store", return_value=database_store),
     ):
         yield database_store
@@ -89,9 +90,7 @@ def test_ranking_with_exif_uses_exif_year(patched_store, mock_config):
         _seed_context(helper, photo_id, decade="1985-1990")
         _setup_run(helper, "run1", ConstraintSet().model_dump_json())
 
-    with patch(
-        "photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config):
         stage = RankingEngineStage()
         stage.run("run1", "cfg")
 
@@ -111,9 +110,7 @@ def test_ranking_with_only_llm_decade(patched_store, mock_config):
         _seed_context(helper, photo_id, decade="1985-1990")
         _setup_run(helper, "run2", ConstraintSet().model_dump_json())
 
-    with patch(
-        "photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config):
         RankingEngineStage().run("run2", "cfg")
 
     with patched_store.transaction() as conn:
@@ -132,9 +129,7 @@ def test_ranking_uses_face_year_from_birthday(patched_store, mock_config):
         _seed_person_and_face(helper, photo_id, birthday="1983-03-15", age=5.0)
         _setup_run(helper, "run3", ConstraintSet().model_dump_json())
 
-    with patch(
-        "photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config):
         RankingEngineStage().run("run3", "cfg")
 
     with patched_store.transaction() as conn:
@@ -164,9 +159,7 @@ def test_ranking_applies_hard_year_pin_from_constraints(patched_store, mock_conf
         _seed_context(helper, photo_id, decade="2000-2005")
         _setup_run(helper, "run4", cs.model_dump_json())
 
-    with patch(
-        "photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config):
         RankingEngineStage().run("run4", "cfg")
 
     with patched_store.transaction() as conn:
@@ -185,9 +178,7 @@ def test_ranking_sorts_by_year(patched_store, mock_config):
         _seed_context(helper, newer, decade="2000-2005")
         _setup_run(helper, "run5", ConstraintSet().model_dump_json())
 
-    with patch(
-        "photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config
-    ):
+    with patch("photochron.pipeline.stages.ranking_engine.get_config", return_value=mock_config):
         RankingEngineStage().run("run5", "cfg")
 
     with patched_store.transaction() as conn:

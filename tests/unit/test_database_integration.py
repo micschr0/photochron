@@ -5,29 +5,18 @@ These tests focus on database operations for context data, transaction integrity
 and schema compliance using SQLite in-memory database.
 """
 
-import pytest
-import sqlite3
 import json
-from datetime import datetime
-from typing import List, Optional
+import sqlite3
 
-from photochron.store import DatabaseStore
-from photochron.store.schema import create_schema, get_schema_version
-from photochron.store.queries import QueryHelper
+import pytest
+
 from photochron.models import (
-    PhotoCreate,
-    Photo,
-    PersonCreate,
-    Person,
-    FaceCreate,
-    Face,
     ContextCreate,
-    Context,
-    RankingCreate,
-    Ranking,
-    PipelineRunCreate,
-    PipelineRun,
+    PhotoCreate,
 )
+from photochron.store import DatabaseStore
+from photochron.store.queries import QueryHelper
+from photochron.store.schema import create_schema, get_schema_version
 
 
 class TestDatabaseTransactionIntegrity:
@@ -226,10 +215,7 @@ class TestContextRecordInsertion:
             ]
             assert retrieved.alternative_decades == ["1980-1985", "1990-1995"]
             assert retrieved.uncertainty_flag is False
-            assert (
-                retrieved.hypothesis_notes
-                == "Clear summer beach scene with strong visual cues"
-            )
+            assert retrieved.hypothesis_notes == "Clear summer beach scene with strong visual cues"
 
     def test_insert_context_with_minimal_data(self, database_store: DatabaseStore):
         """Test inserting context record with only required fields."""
@@ -401,7 +387,7 @@ class TestContextRecordInsertion:
             photo_id = helper.insert_photo(photo)
 
             # Manually insert context with invalid JSON to simulate corrupted data
-            cursor = conn.execute(
+            conn.execute(
                 """
                 INSERT INTO context (
                     photo_id, decade, decade_confidence, season, season_confidence,
@@ -427,7 +413,6 @@ class TestContextRecordInsertion:
                     '{"valid": "json"}',  # This one is valid
                 ),
             )
-            context_id = cursor.lastrowid
 
             # QueryHelper should handle invalid JSON gracefully
             retrieved = helper.get_context_by_photo_id(photo_id)
@@ -436,9 +421,7 @@ class TestContextRecordInsertion:
             assert retrieved.alternative_decades is None  # Invalid JSON becomes None
             assert retrieved.raw_json == '{"valid": "json"}'  # Valid JSON preserved
 
-    def test_get_context_by_photo_id_returns_none_when_no_context(
-        self, database_store: DatabaseStore
-    ):
+    def test_get_context_by_photo_id_returns_none_when_no_context(self, database_store: DatabaseStore):
         """Test that get_context_by_photo_id returns None when no context exists."""
         with database_store.transaction() as conn:
             create_schema(conn)
@@ -563,9 +546,7 @@ class TestDatabaseQueryOperations:
             batch2_ids = {p.id for p in batch2}
             assert batch1_ids.isdisjoint(batch2_ids)
 
-    def test_get_photos_without_context_batch_edge_cases(
-        self, database_store: DatabaseStore
-    ):
+    def test_get_photos_without_context_batch_edge_cases(self, database_store: DatabaseStore):
         """Test batch query edge cases (negative offset, zero batch size)."""
         with database_store.transaction() as conn:
             create_schema(conn)
@@ -606,9 +587,7 @@ class TestDatabaseQueryOperations:
             if batch1 and batch2:
                 assert batch1[0].id != batch2[0].id
 
-    def test_context_query_with_foreign_key_constraint(
-        self, database_store: DatabaseStore
-    ):
+    def test_context_query_with_foreign_key_constraint(self, database_store: DatabaseStore):
         """Test that foreign key constraints are enforced for context records."""
         with database_store.transaction() as conn:
             create_schema(conn)
@@ -626,9 +605,7 @@ class TestDatabaseQueryOperations:
 
             try:
                 helper.insert_context(context)
-                pytest.fail(
-                    "Should have raised sqlite3.IntegrityError for foreign key violation"
-                )
+                pytest.fail("Should have raised sqlite3.IntegrityError for foreign key violation")
             except sqlite3.IntegrityError as e:
                 assert "FOREIGN KEY constraint failed" in str(e)
 
@@ -680,9 +657,7 @@ class TestDatabaseSchemaCompliance:
             assert version == 1
 
             # Verify schema_setup record exists
-            cursor = conn.execute(
-                "SELECT * FROM pipeline_runs WHERE run_id = 'schema_setup'"
-            )
+            cursor = conn.execute("SELECT * FROM pipeline_runs WHERE run_id = 'schema_setup'")
             row = cursor.fetchone()
             assert row is not None
             assert row["schema_version"] == 1
@@ -695,34 +670,22 @@ class TestDatabaseSchemaCompliance:
 
             # Test NOT NULL constraint on photos.content_hash
             try:
-                conn.execute(
-                    "INSERT INTO photos (file_path) VALUES ('/test/photo.jpg')"
-                )
-                pytest.fail(
-                    "Should have raised sqlite3.IntegrityError for NOT NULL constraint"
-                )
+                conn.execute("INSERT INTO photos (file_path) VALUES ('/test/photo.jpg')")
+                pytest.fail("Should have raised sqlite3.IntegrityError for NOT NULL constraint")
             except sqlite3.IntegrityError as e:
                 assert "NOT NULL constraint failed" in str(e)
 
             # Test UNIQUE constraint on photos.content_hash
-            conn.execute(
-                "INSERT INTO photos (content_hash, file_path) VALUES ('hash1', '/test/photo1.jpg')"
-            )
+            conn.execute("INSERT INTO photos (content_hash, file_path) VALUES ('hash1', '/test/photo1.jpg')")
 
             try:
-                conn.execute(
-                    "INSERT INTO photos (content_hash, file_path) VALUES ('hash1', '/test/photo2.jpg')"
-                )
-                pytest.fail(
-                    "Should have raised sqlite3.IntegrityError for UNIQUE constraint"
-                )
+                conn.execute("INSERT INTO photos (content_hash, file_path) VALUES ('hash1', '/test/photo2.jpg')")
+                pytest.fail("Should have raised sqlite3.IntegrityError for UNIQUE constraint")
             except sqlite3.IntegrityError as e:
                 assert "UNIQUE constraint failed" in str(e)
 
             # Test UNIQUE constraint on context.photo_id
-            photo_id = conn.execute(
-                "SELECT id FROM photos WHERE content_hash = 'hash1'"
-            ).fetchone()[0]
+            photo_id = conn.execute("SELECT id FROM photos WHERE content_hash = 'hash1'").fetchone()[0]
 
             conn.execute(
                 """
@@ -740,9 +703,7 @@ class TestDatabaseSchemaCompliance:
                     """,
                     (photo_id,),
                 )
-                pytest.fail(
-                    "Should have raised sqlite3.IntegrityError for UNIQUE constraint"
-                )
+                pytest.fail("Should have raised sqlite3.IntegrityError for UNIQUE constraint")
             except sqlite3.IntegrityError as e:
                 assert "UNIQUE constraint failed" in str(e)
 
@@ -800,9 +761,7 @@ class TestDatabaseSchemaCompliance:
                     (index_name, table_name),
                 )
                 row = cursor.fetchone()
-                assert row is not None, (
-                    f"Index {index_name} on {table_name} should exist"
-                )
+                assert row is not None, f"Index {index_name} on {table_name} should exist"
 
     def test_schema_recreation_is_idempotent(self, database_store: DatabaseStore):
         """Test that creating schema multiple times doesn't cause errors."""

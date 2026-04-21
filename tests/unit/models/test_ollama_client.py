@@ -14,18 +14,17 @@ method, including:
 """
 
 import json
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 import logging
-from typing import Optional, Dict, Any
+from unittest.mock import Mock, patch
+
+import pytest
 
 from photochron.models.ollama_client import (
+    ContextAnalysisResult,
+    ModelType,
     OllamaClient,
     OllamaConfig,
-    ModelType,
-    ContextAnalysisResult,
 )
-from pydantic import ValidationError
 
 
 class TestOllamaClientJsonParsingFallback:
@@ -103,9 +102,7 @@ class TestOllamaClientJsonParsingFallback:
         assert result.photo_medium == "print_scan"
         assert result.photo_medium_confidence == 0.8
 
-    def test_parse_llm_response_json_with_text_wrapper(
-        self, ollama_client, valid_context_result
-    ):
+    def test_parse_llm_response_json_with_text_wrapper(self, ollama_client, valid_context_result):
         """Test _parse_llm_response() with text before and after JSON."""
         # LLM might add explanatory text before/after JSON
         response_text = """Here's my analysis of the photo:
@@ -349,9 +346,7 @@ This is based on the fashion and technology visible in the image."""
         assert result.decade is None  # Cleared due to low confidence (0.0 < 0.2)
         assert result.decade_confidence == 0.0  # Default value
         assert result.season is None  # Cleared due to missing season_confidence
-        assert (
-            result.photo_medium == "unknown"
-        )  # Set to unknown due to missing photo_medium_confidence
+        assert result.photo_medium == "unknown"  # Set to unknown due to missing photo_medium_confidence
         assert result.uncertainty_flag is True  # Set due to low confidence
 
     def test_attempt_json_fix_trailing_comma(self, ollama_client):
@@ -501,12 +496,8 @@ This is based on the fashion and technology visible in the image."""
         assert result.decade == "1985-1990"
         assert result.decade_confidence == 1.0  # Clamped from 2.5
         assert result.season_confidence == 0.0  # Negative value clamped to 0.0
-        assert (
-            result.photo_medium == "unknown"
-        )  # Set to unknown because photo_medium_confidence is invalid
-        assert (
-            result.photo_medium_confidence is None
-        )  # Invalid string should be excluded
+        assert result.photo_medium == "unknown"  # Set to unknown because photo_medium_confidence is invalid
+        assert result.photo_medium_confidence is None  # Invalid string should be excluded
 
     def test_create_fallback_result_invalid_decade(self, ollama_client):
         """Test _create_fallback_result() with invalid decade format."""
@@ -593,9 +584,7 @@ This is based on the fashion and technology visible in the image."""
         """Test analyze_image_context() with completely invalid JSON response."""
         with patch("photochron.models.ollama_client.ollama") as mock_ollama:
             # Mock the generate method to return non-JSON response
-            mock_ollama.generate.return_value = {
-                "response": "I cannot analyze this image."
-            }
+            mock_ollama.generate.return_value = {"response": "I cannot analyze this image."}
 
             # Mock other methods
             ollama_client._prepare_image_input = Mock(return_value="/fake/image.jpg")
@@ -612,9 +601,7 @@ This is based on the fashion and technology visible in the image."""
             assert result is None
             assert "No JSON found in response" in caplog.text
 
-    def test_analyze_image_context_validation_error_fallback(
-        self, ollama_client, caplog
-    ):
+    def test_analyze_image_context_validation_error_fallback(self, ollama_client, caplog):
         """Test analyze_image_context() with ValidationError triggering fallback."""
         with patch("photochron.models.ollama_client.ollama") as mock_ollama:
             # Mock the generate method to return response with invalid data
@@ -647,9 +634,7 @@ This is based on the fashion and technology visible in the image."""
             assert result.decade_confidence == 1.0  # Clamped from 1.5
             assert "Validation failed for LLM response" in caplog.text
 
-    def test_task_2_2_analyze_image_context_json_parsing_fallback_comprehensive(
-        self, ollama_client, caplog
-    ):
+    def test_task_2_2_analyze_image_context_json_parsing_fallback_comprehensive(self, ollama_client, caplog):
         """
         Test for Task 2.2: Verify OllamaClient.analyze_image_context() JSON parsing
         fallback works by testing with invalid JSON response.
@@ -717,9 +702,7 @@ This is based on the fashion and technology visible in the image."""
                 mock_ollama.generate.return_value = {"response": test_case["response"]}
 
                 # Mock other methods
-                ollama_client._prepare_image_input = Mock(
-                    return_value="/fake/image.jpg"
-                )
+                ollama_client._prepare_image_input = Mock(return_value="/fake/image.jpg")
                 ollama_client.is_model_available = Mock(return_value=True)
 
                 with caplog.at_level(logging.WARNING):
@@ -731,9 +714,7 @@ This is based on the fashion and technology visible in the image."""
 
                 # Verify assertions based on test case
                 if test_case["expected_result"] is None:
-                    assert result is None, (
-                        f"Test case '{test_case['name']}': Expected None but got {result}"
-                    )
+                    assert result is None, f"Test case '{test_case['name']}': Expected None but got {result}"
                 elif test_case["expected_result"] == ContextAnalysisResult:
                     assert result is not None, (
                         f"Test case '{test_case['name']}': Expected ContextAnalysisResult but got None"
@@ -764,9 +745,7 @@ This is based on the fashion and technology visible in the image."""
                         assert result.decade_confidence == 0.82, (
                             f"Test case '{test_case['name']}': Decade confidence should be preserved"
                         )
-                        assert result.season == "summer", (
-                            f"Test case '{test_case['name']}': Season should be preserved"
-                        )
+                        assert result.season == "summer", f"Test case '{test_case['name']}': Season should be preserved"
                         assert result.season_confidence == 0.7, (
                             f"Test case '{test_case['name']}': Season confidence should be preserved"
                         )
@@ -776,9 +755,7 @@ This is based on the fashion and technology visible in the image."""
                         assert result.visual_evidence == [
                             'bell-bottom "jeans"',
                             'large collar "shirt"',
-                        ], (
-                            f"Test case '{test_case['name']}': Visual evidence should have escaped quotes"
-                        )
+                        ], f"Test case '{test_case['name']}': Visual evidence should have escaped quotes"
                     # Additional assertions for trailing commas case
                     elif test_case["name"] == "trailing_commas":
                         assert result.decade == "1985-1990", (
@@ -787,9 +764,7 @@ This is based on the fashion and technology visible in the image."""
                         assert result.decade_confidence == 0.82, (
                             f"Test case '{test_case['name']}': Decade confidence should be preserved"
                         )
-                        assert result.season == "summer", (
-                            f"Test case '{test_case['name']}': Season should be preserved"
-                        )
+                        assert result.season == "summer", f"Test case '{test_case['name']}': Season should be preserved"
                         assert result.season_confidence == 0.7, (
                             f"Test case '{test_case['name']}': Season confidence should be preserved"
                         )
@@ -799,9 +774,7 @@ This is based on the fashion and technology visible in the image."""
                         assert result.visual_evidence == [
                             "bell-bottom jeans",
                             "large collar shirt",
-                        ], (
-                            f"Test case '{test_case['name']}': Visual evidence should be preserved"
-                        )
+                        ], f"Test case '{test_case['name']}': Visual evidence should be preserved"
 
                 # Verify logging
                 assert test_case["expected_log"] in caplog.text, (
@@ -857,9 +830,7 @@ This is based on the fashion and technology visible in the image."""
             # Additional assertion: Verify the error message is logged
             assert "Request timed out" in caplog.text
 
-    def test_analyze_image_context_timeout_then_success(
-        self, ollama_client, caplog, valid_context_result
-    ):
+    def test_analyze_image_context_timeout_then_success(self, ollama_client, caplog, valid_context_result):
         """Test analyze_image_context() with timeout on first attempt, success on second.
 
         Verifies:
@@ -970,9 +941,7 @@ This is based on the fashion and technology visible in the image."""
                 f"but called {mock_ollama.generate.call_count} times"
             )
 
-    def test_analyze_image_context_os_error_then_success(
-        self, ollama_client, caplog, valid_context_result
-    ):
+    def test_analyze_image_context_os_error_then_success(self, ollama_client, caplog, valid_context_result):
         """Test analyze_image_context() with OSError on first attempt, success on second.
 
         Verifies:

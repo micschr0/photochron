@@ -2,18 +2,16 @@
 Unit tests for the ContextLayerStage.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
-from pathlib import Path
-import tempfile
-import shutil
 from datetime import datetime
+from unittest.mock import MagicMock, Mock, call, patch
 
-from photochron.pipeline.stages.context_layer import ContextLayerStage
+import pytest
+
 from photochron.config import Config, ConfigContext
-from photochron.models.ollama_client import ModelType, OllamaConfig
 from photochron.context.analyzer import ContextAnalyzer, ContextAnalyzerConfig
 from photochron.models import Photo
+from photochron.models.ollama_client import ModelType
+from photochron.pipeline.stages.context_layer import ContextLayerStage
 
 
 class TestContextLayerStage:
@@ -104,7 +102,7 @@ class TestContextLayerStage:
             ),
             patch(
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
-            ) as mock_analyzer_class,
+            ),
             patch(
                 "photochron.pipeline.stages.context_layer.OllamaConfig",
             ) as mock_ollama_config_class,
@@ -125,9 +123,7 @@ class TestContextLayerStage:
             assert call_kwargs["primary_model"] == ModelType.LLAVA_NEXT_7B
             assert call_kwargs["fallback_model"] == ModelType.MOONDREAM2
 
-    def test_validate_configuration_healthy_both_models(
-        self, mock_config, mock_analyzer
-    ):
+    def test_validate_configuration_healthy_both_models(self, mock_config, mock_analyzer):
         """Test _validate_configuration with healthy server and both models available."""
         with (
             patch(
@@ -163,9 +159,7 @@ class TestContextLayerStage:
             assert ModelType.LLAVA_NEXT_7B in stage.analyzer.config.model_priority
             assert ModelType.MOONDREAM2 in stage.analyzer.config.model_priority
 
-    def test_validate_configuration_healthy_primary_only(
-        self, mock_config, mock_analyzer
-    ):
+    def test_validate_configuration_healthy_primary_only(self, mock_config, mock_analyzer):
         """Test _validate_configuration with healthy server but only primary model available."""
         with (
             patch(
@@ -199,9 +193,7 @@ class TestContextLayerStage:
             # Verify model priority includes only primary
             assert stage.analyzer.config.model_priority == [ModelType.LLAVA_NEXT_7B]
 
-    def test_validate_configuration_healthy_fallback_only(
-        self, mock_config, mock_analyzer
-    ):
+    def test_validate_configuration_healthy_fallback_only(self, mock_config, mock_analyzer):
         """Test _validate_configuration with healthy server but only fallback model available."""
         with (
             patch(
@@ -266,9 +258,7 @@ class TestContextLayerStage:
             assert stage._degraded_mode is True
             assert stage._available_models == {"primary": False, "fallback": False}
 
-    def test_validate_configuration_no_models_available(
-        self, mock_config, mock_analyzer
-    ):
+    def test_validate_configuration_no_models_available(self, mock_config, mock_analyzer):
         """Test _validate_configuration with healthy server but no models available."""
         with (
             patch(
@@ -447,9 +437,7 @@ class TestContextLayerStage:
             stage.run("test-run-id", "config-hash")
 
             # Should mark complete with zero photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=0
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=0)
 
     def test_run_rechecks_health_when_unhealthy(self, mock_config, mock_analyzer):
         """Test run() method rechecks health when not healthy."""
@@ -462,10 +450,8 @@ class TestContextLayerStage:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context", return_value=[]
-            ),
+            patch.object(ContextLayerStage, "mark_complete"),
+            patch.object(ContextLayerStage, "_get_photos_without_context", return_value=[]),
         ):
             # First health check returns unhealthy
             mock_analyzer.health_check.side_effect = [
@@ -516,9 +502,7 @@ class TestContextLayerStage:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context", return_value=[]
-            ),
+            patch.object(ContextLayerStage, "_get_photos_without_context", return_value=[]),
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -536,9 +520,7 @@ class TestContextLayerStage:
             stage.run("test-run-id", "config-hash")
 
             # Should mark complete with zero photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=0
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=0)
 
     def test_same_primary_and_fallback_model(self, mock_config, mock_analyzer):
         """Test when primary and fallback models are the same."""
@@ -634,13 +616,9 @@ class TestContextLayerStage:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_store_minimal_context"
-            ) as mock_store_minimal,
+            patch.object(ContextLayerStage, "_store_minimal_context"),
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -692,9 +670,7 @@ class TestContextLayerStage:
             )
 
             # Should mark complete with 2 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)
 
     def test_run_with_photo_failures(self, mock_config, mock_analyzer):
         """Test run() method with some photo processing failures."""
@@ -708,9 +684,7 @@ class TestContextLayerStage:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
         ):
             # Mock health check
@@ -775,9 +749,7 @@ class TestContextLayerStage:
             assert mock_process_photo.call_count == 3
 
             # Should mark complete with 2 photos processed (1 failed)
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)
 
     def test_name_property(self, mock_config, mock_analyzer):
         """Test name property returns correct value."""
@@ -846,9 +818,7 @@ class TestContextLayerStage:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -948,9 +918,7 @@ class TestContextLayerStage:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -1002,9 +970,7 @@ class TestContextLayerStage:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -1029,9 +995,7 @@ class TestContextLayerStage:
             with pytest.raises(Exception, match="Database connection failed"):
                 stage._get_photos_without_context()
 
-    def test_check_memory_before_batch_psutil_not_available(
-        self, mock_config, mock_analyzer
-    ):
+    def test_check_memory_before_batch_psutil_not_available(self, mock_config, mock_analyzer):
         """Test _check_memory_before_batch when psutil is not available."""
         with (
             patch(
@@ -1065,9 +1029,7 @@ class TestContextLayerStage:
             assert result["available_mb"] is None
             assert "psutil not available" in result["message"]
 
-    def test_check_memory_before_batch_psutil_available_ok(
-        self, mock_config, mock_analyzer
-    ):
+    def test_check_memory_before_batch_psutil_available_ok(self, mock_config, mock_analyzer):
         """Test _check_memory_before_batch when memory is above thresholds."""
         with (
             patch(
@@ -1227,13 +1189,9 @@ class TestContextLayerStage:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("time.sleep") as mock_sleep,
         ):
             # Mock health check
@@ -1296,13 +1254,9 @@ class TestContextLayerStage:
             mock_process_photo.assert_called_once_with(photo2)
 
             # Should mark complete with 1 photo processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=1
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=1)
 
-    def test_run_with_warning_memory_logs_but_continues(
-        self, mock_config, mock_analyzer
-    ):
+    def test_run_with_warning_memory_logs_but_continues(self, mock_config, mock_analyzer):
         """Test run() method logs warning but continues when memory is low."""
         with (
             patch(
@@ -1314,13 +1268,9 @@ class TestContextLayerStage:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("time.sleep") as mock_sleep,
         ):
             # Mock health check
@@ -1383,13 +1333,9 @@ class TestContextLayerStage:
             assert mock_process_photo.call_count == 2
 
             # Should mark complete with 2 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)
 
-    def test_run_with_error_memory_logs_but_continues(
-        self, mock_config, mock_analyzer
-    ):
+    def test_run_with_error_memory_logs_but_continues(self, mock_config, mock_analyzer):
         """Test run() method logs warning but continues when memory check returns error."""
         with (
             patch(
@@ -1401,13 +1347,9 @@ class TestContextLayerStage:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("time.sleep") as mock_sleep,
         ):
             # Mock health check
@@ -1470,13 +1412,9 @@ class TestContextLayerStage:
             assert mock_process_photo.call_count == 2
 
             # Should mark complete with 2 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)
 
-    def test_run_with_unknown_memory_logs_but_continues(
-        self, mock_config, mock_analyzer
-    ):
+    def test_run_with_unknown_memory_logs_but_continues(self, mock_config, mock_analyzer):
         """Test run() method logs warning but continues when memory check returns unknown."""
         with (
             patch(
@@ -1488,13 +1426,9 @@ class TestContextLayerStage:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("time.sleep") as mock_sleep,
         ):
             # Mock health check
@@ -1557,6 +1491,4 @@ class TestContextLayerStage:
             assert mock_process_photo.call_count == 2
 
             # Should mark complete with 2 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)

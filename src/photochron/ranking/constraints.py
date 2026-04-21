@@ -37,14 +37,10 @@ def _apply_year_pin(estimate: DateEstimate, c: Constraint) -> None:
     if c.type == ConstraintType.HARD:
         estimate.confidence = max(estimate.confidence, 0.95)
         estimate.review_needed = False
-        estimate.notes = (
-            f"{estimate.notes}; hard pin {c.source} {c.year}".strip("; ")
-        )
+        estimate.notes = f"{estimate.notes}; hard pin {c.source} {c.year}".strip("; ")
     else:
         estimate.confidence = max(estimate.confidence, 0.7)
-        estimate.notes = (
-            f"{estimate.notes}; soft pin {c.source} {c.year}".strip("; ")
-        )
+        estimate.notes = f"{estimate.notes}; soft pin {c.source} {c.year}".strip("; ")
 
 
 def _apply_after(estimate: DateEstimate, c: Constraint) -> None:
@@ -63,9 +59,7 @@ def _apply_after(estimate: DateEstimate, c: Constraint) -> None:
         if c.type == ConstraintType.HARD:
             estimate.year = ref.year
             estimate.month = ref.month
-            estimate.notes = (
-                f"{estimate.notes}; clamped to after {c.reference_date}".strip("; ")
-            )
+            estimate.notes = f"{estimate.notes}; clamped to after {c.reference_date}".strip("; ")
             estimate.review_needed = True
 
 
@@ -85,9 +79,7 @@ def _apply_before(estimate: DateEstimate, c: Constraint) -> None:
         if c.type == ConstraintType.HARD:
             estimate.year = ref.year
             estimate.month = ref.month
-            estimate.notes = (
-                f"{estimate.notes}; clamped to before {c.reference_date}".strip("; ")
-            )
+            estimate.notes = f"{estimate.notes}; clamped to before {c.reference_date}".strip("; ")
             estimate.review_needed = True
 
 

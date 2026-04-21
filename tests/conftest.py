@@ -3,14 +3,14 @@ Pytest fixtures for PhotoChron tests.
 """
 
 import tempfile
-import sqlite3
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
+
 import pytest
 from loguru import logger as _loguru_logger
 
-from photochron.store import DatabaseStore, get_store, close_store
-from photochron.config import Config, ConfigPaths, ConfigModels, ConfigPipeline
+from photochron.config import Config, ConfigModels, ConfigPaths, ConfigPipeline
+from photochron.store import DatabaseStore, close_store
 from photochron.store.schema import create_schema
 
 

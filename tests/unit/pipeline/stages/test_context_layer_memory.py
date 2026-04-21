@@ -3,15 +3,15 @@ Additional unit tests for ContextLayerStage memory check implementation.
 Focusing on edge cases and integration with config.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
 from datetime import datetime
+from unittest.mock import Mock, call, patch
 
-from photochron.pipeline.stages.context_layer import ContextLayerStage
+import pytest
+
 from photochron.config import Config, ConfigContext
-from photochron.models.ollama_client import ModelType
 from photochron.context.analyzer import ContextAnalyzer, ContextAnalyzerConfig
 from photochron.models import Photo
+from photochron.pipeline.stages.context_layer import ContextLayerStage
 
 
 class TestContextLayerStageMemory:
@@ -58,13 +58,9 @@ class TestContextLayerStageMemory:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -126,9 +122,7 @@ class TestContextLayerStageMemory:
             )
 
             # Should mark complete with 2 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)
 
     def test_run_with_negative_batch_size(self, mock_config, mock_analyzer):
         """Test run() method handles negative batch_size by using 1 instead."""
@@ -142,13 +136,9 @@ class TestContextLayerStageMemory:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -194,9 +184,7 @@ class TestContextLayerStageMemory:
             mock_process_photo.assert_called_once_with(photo1)
 
             # Should mark complete with 1 photo processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=1
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=1)
 
     def test_check_memory_with_zero_thresholds(self, mock_config, mock_analyzer):
         """Test _check_memory_before_batch with zero memory thresholds."""
@@ -365,9 +353,7 @@ class TestContextLayerStageMemory:
             assert "Low memory" in result["message"]
             assert "50.0MB < 100MB" in result["message"]
 
-    def test_memory_check_integration_with_config_changes(
-        self, mock_config, mock_analyzer
-    ):
+    def test_memory_check_integration_with_config_changes(self, mock_config, mock_analyzer):
         """Test that memory check correctly uses config values."""
         with (
             patch(
@@ -409,9 +395,7 @@ class TestContextLayerStageMemory:
             assert result["available_mb"] == 150.0
             assert "150.0MB < 200MB" in result["message"]
 
-    def test_run_with_multiple_batches_and_memory_changes(
-        self, mock_config, mock_analyzer
-    ):
+    def test_run_with_multiple_batches_and_memory_changes(self, mock_config, mock_analyzer):
         """Test run() with multiple batches where memory status changes between batches."""
         with (
             patch(
@@ -423,13 +407,9 @@ class TestContextLayerStageMemory:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("time.sleep") as mock_sleep,
         ):
             # Mock health check
@@ -491,9 +471,7 @@ class TestContextLayerStageMemory:
             )
 
             # Should mark complete with 2 photos processed (not 4)
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)
 
     def test_memory_check_message_formatting(self, mock_config, mock_analyzer):
         """Test that memory check messages are properly formatted."""

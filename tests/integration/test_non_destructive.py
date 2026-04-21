@@ -2,11 +2,12 @@
 Non-destructive operation tests.
 """
 
+import hashlib
 import tempfile
 from pathlib import Path
-import hashlib
 
 from typer.testing import CliRunner
+
 from photochron.cli import app
 
 runner = CliRunner()
