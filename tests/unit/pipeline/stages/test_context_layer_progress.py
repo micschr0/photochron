@@ -2,15 +2,15 @@
 Unit tests for percentage-based progress reporting in ContextLayerStage.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
 from datetime import datetime
+from unittest.mock import Mock, patch
 
-from photochron.pipeline.stages.context_layer import ContextLayerStage
+import pytest
+
 from photochron.config import Config, ConfigContext
-from photochron.models.ollama_client import ModelType
 from photochron.context.analyzer import ContextAnalyzer, ContextAnalyzerConfig
 from photochron.models import Photo
+from photochron.pipeline.stages.context_layer import ContextLayerStage
 
 
 class TestContextLayerStageProgress:
@@ -57,13 +57,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
-            patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
+            patch.object(ContextLayerStage, "_process_photo"),
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -109,11 +105,7 @@ class TestContextLayerStageProgress:
             stage.run("test-run-id", "config-hash")
 
             # Verify batch progress logging calls with percentages
-            batch_log_calls = [
-                call
-                for call in mock_logger.info.call_args_list
-                if "Processing batch" in str(call)
-            ]
+            batch_log_calls = [call for call in mock_logger.info.call_args_list if "Processing batch" in str(call)]
 
             # Should have 4 batches (10 photos, batch size 3 = ceil(10/3) = 4 batches)
             assert len(batch_log_calls) == 4
@@ -141,9 +133,7 @@ class TestContextLayerStageProgress:
                 assert abs(percent_value - expected_batch_percentages[i]) < 0.1
 
             # Should mark complete with 10 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=10
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=10)
 
     def test_photo_progress_logging_every_10_photos(self, mock_config, mock_analyzer):
         """Test photo-level progress logging every 10 photos includes percentage."""
@@ -157,13 +147,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
-            patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
+            patch.object(ContextLayerStage, "_process_photo"),
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -238,9 +224,7 @@ class TestContextLayerStageProgress:
                 assert abs(percent_value - expected_percentages[i]) < 0.1
 
             # Should mark complete with 25 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=25
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=25)
 
     def test_final_completion_logging_with_percentage(self, mock_config, mock_analyzer):
         """Test final completion logging includes percentage with 1 decimal place."""
@@ -254,13 +238,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
-            patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
+            patch.object(ContextLayerStage, "_process_photo"),
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -307,9 +287,7 @@ class TestContextLayerStageProgress:
 
             # Verify final completion logging
             completion_log_calls = [
-                call
-                for call in mock_logger.info.call_args_list
-                if "Context layer stage completed" in str(call)
+                call for call in mock_logger.info.call_args_list if "Context layer stage completed" in str(call)
             ]
 
             assert len(completion_log_calls) == 1
@@ -328,9 +306,7 @@ class TestContextLayerStageProgress:
             assert abs(percent_value - 100.0) < 0.1
 
             # Should mark complete with 7 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=7
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=7)
 
     def test_progress_with_zero_total_photos(self, mock_config, mock_analyzer):
         """Test progress logging when total_photos = 0."""
@@ -344,9 +320,7 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context", return_value=[]
-            ),
+            patch.object(ContextLayerStage, "_get_photos_without_context", return_value=[]),
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -365,20 +339,14 @@ class TestContextLayerStageProgress:
             stage.run("test-run-id", "config-hash")
 
             # Should log "No photos without context data; stage complete"
-            mock_logger.info.assert_any_call(
-                "No photos without context data; stage complete"
-            )
+            mock_logger.info.assert_any_call("No photos without context data; stage complete")
 
             # Should NOT log any percentage messages (division by zero protection)
-            percentage_log_calls = [
-                call for call in mock_logger.info.call_args_list if "%" in str(call)
-            ]
+            percentage_log_calls = [call for call in mock_logger.info.call_args_list if "%" in str(call)]
             assert len(percentage_log_calls) == 0
 
             # Should mark complete with 0 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=0
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=0)
 
     def test_progress_with_batch_size_1(self, mock_config, mock_analyzer):
         """Test progress logging with batch_size = 1 (edge case)."""
@@ -392,13 +360,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
-            patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
+            patch.object(ContextLayerStage, "_process_photo"),
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -444,11 +408,7 @@ class TestContextLayerStageProgress:
             stage.run("test-run-id", "config-hash")
 
             # Verify batch progress logging for each photo (batch size 1)
-            batch_log_calls = [
-                call
-                for call in mock_logger.info.call_args_list
-                if "Processing batch" in str(call)
-            ]
+            batch_log_calls = [call for call in mock_logger.info.call_args_list if "Processing batch" in str(call)]
 
             # Should have 3 batches (3 photos, batch size 1)
             assert len(batch_log_calls) == 3
@@ -463,18 +423,12 @@ class TestContextLayerStageProgress:
                 percent_str = log_message[percent_start:percent_end]
                 assert "." in percent_str
                 percent_value = float(percent_str)
-                assert (
-                    abs(percent_value - expected_percentages[i]) < 0.2
-                )  # Allow for rounding
+                assert abs(percent_value - expected_percentages[i]) < 0.2  # Allow for rounding
 
             # Should mark complete with 3 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=3
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=3)
 
-    def test_progress_with_invalid_batch_size_correction(
-        self, mock_config, mock_analyzer
-    ):
+    def test_progress_with_invalid_batch_size_correction(self, mock_config, mock_analyzer):
         """Test progress logging when batch_size is invalid and corrected to 1."""
         with (
             patch(
@@ -486,13 +440,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -538,17 +488,13 @@ class TestContextLayerStageProgress:
             stage.run("test-run-id", "config-hash")
 
             # Should log warning about invalid batch size
-            mock_logger.warning.assert_any_call(
-                f"Invalid batch_size {mock_config.context.batch_size}, using 1 instead"
-            )
+            mock_logger.warning.assert_any_call(f"Invalid batch_size {mock_config.context.batch_size}, using 1 instead")
 
             # Should process photos with batch size corrected to 1
             assert mock_process_photo.call_count == 2
 
             # Should mark complete with 2 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=2
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=2)
 
     def test_progress_with_failed_photos(self, mock_config, mock_analyzer):
         """Test progress logging when some photos fail to process."""
@@ -562,13 +508,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -622,9 +564,7 @@ class TestContextLayerStageProgress:
 
             # Verify final completion logging shows correct percentage
             completion_log_calls = [
-                call
-                for call in mock_logger.info.call_args_list
-                if "Context layer stage completed" in str(call)
+                call for call in mock_logger.info.call_args_list if "Context layer stage completed" in str(call)
             ]
 
             assert len(completion_log_calls) == 1
@@ -642,13 +582,9 @@ class TestContextLayerStageProgress:
             assert "failed: 2" in log_message
 
             # Should mark complete with 3 photos processed (2 failed)
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=3
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=3)
 
-    def test_memory_critical_logging_includes_percentage(
-        self, mock_config, mock_analyzer
-    ):
+    def test_memory_critical_logging_includes_percentage(self, mock_config, mock_analyzer):
         """Test memory critical warning includes batch percentage."""
         with (
             patch(
@@ -660,13 +596,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
             patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
             patch("time.sleep") as mock_sleep,
         ):
@@ -713,9 +645,7 @@ class TestContextLayerStageProgress:
 
             # Verify memory critical warning includes percentage
             critical_warning_calls = [
-                call
-                for call in mock_logger.warning.call_args_list
-                if "Memory critically low" in str(call)
+                call for call in mock_logger.warning.call_args_list if "Memory critically low" in str(call)
             ]
 
             assert len(critical_warning_calls) >= 1
@@ -743,9 +673,7 @@ class TestContextLayerStageProgress:
             assert mock_process_photo.call_count == 4
 
             # Should mark complete with 4 photos processed (first batch skipped)
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=4
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=4)
 
     def test_percentage_calculation_edge_cases(self, mock_config, mock_analyzer):
         """Test percentage calculation for various edge cases."""
@@ -759,13 +687,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
-            patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
+            patch.object(ContextLayerStage, "_process_photo"),
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -810,33 +734,23 @@ class TestContextLayerStageProgress:
             stage.run("test-run-id", "config-hash")
 
             # Check batch logging shows 0.0% (before processing)
-            batch_log_calls = [
-                call
-                for call in mock_logger.info.call_args_list
-                if "Processing batch" in str(call)
-            ]
+            batch_log_calls = [call for call in mock_logger.info.call_args_list if "Processing batch" in str(call)]
             assert len(batch_log_calls) == 1
             batch_log_message = batch_log_calls[0][0][0]
             assert "(0.0%)" in batch_log_message
 
             # Check final completion shows 100.0%
             completion_log_calls = [
-                call
-                for call in mock_logger.info.call_args_list
-                if "Context layer stage completed" in str(call)
+                call for call in mock_logger.info.call_args_list if "Context layer stage completed" in str(call)
             ]
             assert len(completion_log_calls) == 1
             completion_log_message = completion_log_calls[0][0][0]
             assert "(100.0%)" in completion_log_message
 
             # Should mark complete with 1 photo processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=1
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=1)
 
-    def test_photo_progress_not_logged_before_10_photos(
-        self, mock_config, mock_analyzer
-    ):
+    def test_photo_progress_not_logged_before_10_photos(self, mock_config, mock_analyzer):
         """Test photo-level progress is NOT logged before reaching 10 photos."""
         with (
             patch(
@@ -848,13 +762,9 @@ class TestContextLayerStageProgress:
                 return_value=mock_analyzer,
             ),
             patch.object(ContextLayerStage, "mark_complete") as mock_mark_complete,
-            patch.object(
-                ContextLayerStage, "_get_photos_without_context"
-            ) as mock_get_photos,
-            patch.object(ContextLayerStage, "_process_photo") as mock_process_photo,
-            patch.object(
-                ContextLayerStage, "_check_memory_before_batch"
-            ) as mock_check_memory,
+            patch.object(ContextLayerStage, "_get_photos_without_context") as mock_get_photos,
+            patch.object(ContextLayerStage, "_process_photo"),
+            patch.object(ContextLayerStage, "_check_memory_before_batch") as mock_check_memory,
             patch("photochron.pipeline.stages.context_layer.logger") as mock_logger,
         ):
             # Mock health check
@@ -911,6 +821,4 @@ class TestContextLayerStageProgress:
             assert len(photo_log_calls) == 0
 
             # Should mark complete with 9 photos processed
-            mock_mark_complete.assert_called_once_with(
-                "test-run-id", photos_processed=9
-            )
+            mock_mark_complete.assert_called_once_with("test-run-id", photos_processed=9)

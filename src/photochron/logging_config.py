@@ -31,9 +31,7 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def _format_extra(record: dict) -> str:
@@ -50,18 +48,14 @@ def _console_format(record: dict) -> str:
         "<green>{time:HH:mm:ss}</green> "
         "<level>{level: <8}</level> "
         "<cyan>{name}</cyan>:<cyan>{function}</cyan> - "
-        "<level>{message}</level>"
-        + _format_extra(record)
-        + "\n{exception}"
+        "<level>{message}</level>" + _format_extra(record) + "\n{exception}"
     )
 
 
 def _file_format(record: dict) -> str:
     return (
         "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
-        "{name}:{function}:{line} | {message}"
-        + _format_extra(record)
-        + "\n{exception}"
+        "{name}:{function}:{line} | {message}" + _format_extra(record) + "\n{exception}"
     )
 
 

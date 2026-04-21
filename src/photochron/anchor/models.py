@@ -19,9 +19,7 @@ class AnchorPerson(BaseModel):
 
     id: str = Field(..., description="Stable person identifier (slug).")
     name: str = Field(..., description="Display name.")
-    birthday: str | None = Field(
-        None, description="ISO date string (YYYY-MM-DD). Optional."
-    )
+    birthday: str | None = Field(None, description="ISO date string (YYYY-MM-DD). Optional.")
 
     @field_validator("birthday")
     @classmethod
@@ -85,9 +83,7 @@ class Constraint(BaseModel):
     month: int | None = None
     day: int | None = None
     type: ConstraintType = ConstraintType.SOFT
-    source: str = Field(
-        "", description="Human-readable source (event name / known_dates entry)."
-    )
+    source: str = Field("", description="Human-readable source (event name / known_dates entry).")
 
 
 class ConstraintSet(BaseModel):

@@ -51,8 +51,10 @@ photochron = "photochron.cli:app"
 where = ["src"]
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 target-version = "py312"
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "F",  # pyflakes
@@ -61,8 +63,10 @@ select = [
 ]
 ignore = []
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # unused import
+"tests/**/*.py" = ["E501"]  # long assertion strings and SQL in tests
+"src/photochron/models/ollama_client.py" = ["E501"]  # long prompt templates
 
 [tool.mypy]
 python_version = "3.12"

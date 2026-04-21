@@ -4,9 +4,10 @@ PhotoChron CLI interface using Typer.
 
 from pathlib import Path
 from typing import Optional
+
 import typer
 
-from .commands import run, cluster, rerun, status
+from .commands import cluster, rerun, run, status
 
 # Create Typer app
 app = typer.Typer(
@@ -24,7 +25,7 @@ app.command(name="status", help="Show pipeline progress and cache stats")(status
 
 @app.callback(invoke_without_command=True)
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         help="Show version and exit",

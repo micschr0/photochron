@@ -6,8 +6,9 @@ integration without requiring a real Ollama server.
 """
 
 import json
-from typing import Dict, Any, Optional, List
-from unittest.mock import Mock, AsyncMock, patch
+from typing import Any
+from unittest.mock import Mock, patch
+
 import pytest
 
 from photochron.models.ollama_client import ContextAnalysisResult
@@ -22,7 +23,7 @@ class MockOllamaResponse:
         self.created_at = "2024-01-01T00:00:00.000Z"
         self.done = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format expected by ollama library."""
         return {
             "model": self.model,
@@ -33,18 +34,18 @@ class MockOllamaResponse:
 
 
 def create_mock_context_response(
-    decade: Optional[str] = "1985-1990",
+    decade: str | None = "1985-1990",
     decade_confidence: float = 0.75,
-    season: Optional[str] = "summer",
-    event_hint: Optional[str] = None,
+    season: str | None = "summer",
+    event_hint: str | None = None,
     photo_medium: str = "print_scan",
-    photo_medium_confidence: Optional[float] = 0.8,
-    visual_evidence: Optional[List[str]] = None,
-    season_confidence: Optional[float] = None,
-    event_confidence: Optional[float] = None,
-    alternative_decades: Optional[List[str]] = None,
-    uncertainty_flag: Optional[bool] = None,
-    hypothesis_notes: Optional[str] = None,
+    photo_medium_confidence: float | None = 0.8,
+    visual_evidence: list[str] | None = None,
+    season_confidence: float | None = None,
+    event_confidence: float | None = None,
+    alternative_decades: list[str] | None = None,
+    uncertainty_flag: bool | None = None,
+    hypothesis_notes: str | None = None,
 ) -> str:
     """
     Create a mock LLM response with structured JSON.
@@ -86,18 +87,18 @@ def create_mock_context_response(
 
 
 def create_mock_llama_response(
-    decade: Optional[str] = "1985-1990",
+    decade: str | None = "1985-1990",
     decade_confidence: float = 0.75,
-    season: Optional[str] = "summer",
-    event_hint: Optional[str] = None,
+    season: str | None = "summer",
+    event_hint: str | None = None,
     photo_medium: str = "print_scan",
-    photo_medium_confidence: Optional[float] = 0.8,
-    visual_evidence: Optional[List[str]] = None,
-    season_confidence: Optional[float] = None,
-    event_confidence: Optional[float] = None,
-    alternative_decades: Optional[List[str]] = None,
-    uncertainty_flag: Optional[bool] = None,
-    hypothesis_notes: Optional[str] = None,
+    photo_medium_confidence: float | None = 0.8,
+    visual_evidence: list[str] | None = None,
+    season_confidence: float | None = None,
+    event_confidence: float | None = None,
+    alternative_decades: list[str] | None = None,
+    uncertainty_flag: bool | None = None,
+    hypothesis_notes: str | None = None,
 ) -> MockOllamaResponse:
     """
     Create a complete mock Ollama response.
@@ -136,9 +137,7 @@ def create_mock_llama_response(
     return MockOllamaResponse(json_response)
 
 
-def create_mock_ollama_client(
-    available_models: Optional[list] = None, mock_responses: Optional[list] = None
-) -> Mock:
+def create_mock_ollama_client(available_models: list | None = None, mock_responses: list | None = None) -> Mock:
     """
     Create a mock Ollama client for testing.
 
@@ -163,9 +162,7 @@ def create_mock_ollama_client(
 
     # Mock the generate function to return responses in sequence
     response_iter = iter(mock_responses)
-    mock_ollama.generate = Mock(
-        side_effect=lambda *args, **kwargs: next(response_iter).to_dict()
-    )
+    mock_ollama.generate = Mock(side_effect=lambda *args, **kwargs: next(response_iter).to_dict())
 
     return mock_ollama
 
@@ -175,9 +172,7 @@ def mock_ollama():
     """Fixture providing a mocked ollama module."""
     with patch("photochron.models.ollama_client.ollama") as mock:
         # Default mock setup
-        mock.list.return_value = {
-            "models": [{"name": "llava-next:7b"}, {"name": "moondream2"}]
-        }
+        mock.list.return_value = {"models": [{"name": "llava-next:7b"}, {"name": "moondream2"}]}
 
         # Default successful response
         mock_response = create_mock_context_response()
@@ -223,9 +218,7 @@ def mock_failed_ollama():
 def mock_invalid_json_ollama():
     """Fixture providing a mocked ollama module that returns invalid JSON."""
     with patch("photochron.models.ollama_client.ollama") as mock:
-        mock.list.return_value = {
-            "models": [{"name": "llava-next:7b"}, {"name": "moondream2"}]
-        }
+        mock.list.return_value = {"models": [{"name": "llava-next:7b"}, {"name": "moondream2"}]}
 
         # Return invalid JSON
         mock.generate.return_value = {
@@ -242,9 +235,7 @@ def mock_invalid_json_ollama():
 def mock_partial_json_ollama():
     """Fixture providing a mocked ollama module that returns partial JSON."""
     with patch("photochron.models.ollama_client.ollama") as mock:
-        mock.list.return_value = {
-            "models": [{"name": "llava-next:7b"}, {"name": "moondream2"}]
-        }
+        mock.list.return_value = {"models": [{"name": "llava-next:7b"}, {"name": "moondream2"}]}
 
         # Return JSON missing required fields
         partial_json = json.dumps(

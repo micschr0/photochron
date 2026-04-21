@@ -79,13 +79,11 @@ def write_exif_fields(
             exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = dt.encode("ascii")
 
         description = _build_description(year, confidence, signals, review_needed)
-        exif_dict["0th"][piexif.ImageIFD.ImageDescription] = description.encode(
-            "utf-8", errors="replace"
-        )
+        exif_dict["0th"][piexif.ImageIFD.ImageDescription] = description.encode("utf-8", errors="replace")
 
         user_comment = json.dumps(full_result, separators=(",", ":"))
-        exif_dict["Exif"][piexif.ExifIFD.UserComment] = (
-            b"ASCII\x00\x00\x00" + user_comment.encode("utf-8", errors="replace")
+        exif_dict["Exif"][piexif.ExifIFD.UserComment] = b"ASCII\x00\x00\x00" + user_comment.encode(
+            "utf-8", errors="replace"
         )
 
         exif_bytes = piexif.dump(exif_dict)

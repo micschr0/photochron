@@ -2,30 +2,21 @@
 Pydantic models for PhotoChron configuration.
 """
 
-from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ConfigPaths(BaseModel):
     """Path configuration."""
 
-    cache_dir: str = Field(
-        ".photochron", description="Directory for cache and database"
-    )
-    thumbs_dir: str = Field(
-        ".photochron/thumbs", description="Directory for downsampled thumbnails"
-    )
-    output_dir: str = Field(
-        "photochron_output", description="Directory for output files"
-    )
+    cache_dir: str = Field(".photochron", description="Directory for cache and database")
+    thumbs_dir: str = Field(".photochron/thumbs", description="Directory for downsampled thumbnails")
+    output_dir: str = Field("photochron_output", description="Directory for output files")
 
 
 class ConfigModels(BaseModel):
     """AI model configuration."""
 
-    insightface_version: str = Field(
-        "buffalo_l", description="InsightFace model version"
-    )
+    insightface_version: str = Field("buffalo_l", description="InsightFace model version")
     ollama_model: str = Field("llava-next:7b", description="Ollama vision LLM model")
     fallback_model: str = Field("moondream2", description="Fallback vision model")
     max_image_size: int = Field(
@@ -39,15 +30,9 @@ class ConfigModels(BaseModel):
 class ConfigPipeline(BaseModel):
     """Pipeline configuration."""
 
-    face_age_weight: float = Field(
-        0.45, ge=0.0, le=1.0, description="Weight for face age estimates in ranking"
-    )
-    llm_decade_weight: float = Field(
-        0.30, ge=0.0, le=1.0, description="Weight for LLM decade estimates in ranking"
-    )
-    photo_medium_weight: float = Field(
-        0.10, ge=0.0, le=1.0, description="Weight for photo medium priors in ranking"
-    )
+    face_age_weight: float = Field(0.45, ge=0.0, le=1.0, description="Weight for face age estimates in ranking")
+    llm_decade_weight: float = Field(0.30, ge=0.0, le=1.0, description="Weight for LLM decade estimates in ranking")
+    photo_medium_weight: float = Field(0.10, ge=0.0, le=1.0, description="Weight for photo medium priors in ranking")
     min_confidence_threshold: float = Field(
         0.5,
         ge=0.0,
@@ -71,7 +56,7 @@ class ConfigIngestion(BaseModel):
         le=4096,
         description="Maximum size for downsampled images (longest edge in pixels)",
     )
-    supported_formats: List[str] = Field(
+    supported_formats: list[str] = Field(
         default_factory=lambda: [
             ".jpg",
             ".jpeg",
@@ -228,7 +213,7 @@ class ConfigLogging(BaseModel):
         "INFO",
         description="Log level for console output (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
-    file_path: Optional[str] = Field(
+    file_path: str | None = Field(
         ".photochron/logs/photochron.log",
         description="Path to log file. Set to null to disable file logging.",
     )
@@ -264,9 +249,7 @@ class ConfigLogging(BaseModel):
         for field in ("level", "file_level"):
             value = getattr(self, field).upper()
             if value not in valid:
-                raise ValueError(
-                    f"{field} must be one of {sorted(valid)}, got '{value}'"
-                )
+                raise ValueError(f"{field} must be one of {sorted(valid)}, got '{value}'")
             setattr(self, field, value)
         return self
 

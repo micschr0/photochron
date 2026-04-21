@@ -9,30 +9,26 @@ This module tests error handling across the system, including:
 """
 
 import json
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
-import time
 import logging
-from typing import Optional, Dict, Any, List
-import os
+from unittest.mock import Mock, patch
+
+import pytest
 
 from photochron.context.analyzer import (
+    AnalysisStrategy,
     ContextAnalyzer,
     ContextAnalyzerConfig,
-    AnalysisStrategy,
-    FallbackStrategy,
 )
 from photochron.models.ollama_client import (
+    ContextAnalysisResult,
+    ModelType,
     OllamaClient,
     OllamaConfig,
-    ModelType,
-    ContextAnalysisResult,
 )
-from pydantic import ValidationError
 
-# Import ollama exceptions if available
+# Import ollama exceptions if available (availability check only)
 try:
-    from ollama import RequestError, ResponseError
+    from ollama import RequestError, ResponseError  # noqa: F401
 
     HAS_OLLAMA_EXCEPTIONS = True
 except ImportError:
@@ -49,9 +45,7 @@ class TestErrorHandlingComprehensive:
         mock_client.analyze_image_context = Mock()
         mock_client.get_prompt_template = Mock(return_value="Test prompt template")
         mock_client.connect = Mock(return_value=True)
-        mock_client.health_check = Mock(
-            return_value={"status": "healthy", "server_available": True}
-        )
+        mock_client.health_check = Mock(return_value={"status": "healthy", "server_available": True})
         return mock_client
 
     @pytest.fixture
@@ -111,9 +105,7 @@ class TestErrorHandlingComprehensive:
         return client
 
     # Test 1: ContextAnalyzer retry logic - success cases
-    def test_with_retry_success_on_first_attempt(
-        self, analyzer_with_retries, mock_ollama_client, mock_context_result
-    ):
+    def test_with_retry_success_on_first_attempt(self, analyzer_with_retries, mock_ollama_client, mock_context_result):
         """Test _with_retry() when operation succeeds on first attempt."""
         # Setup
         mock_ollama_client.analyze_image_context.return_value = mock_context_result
@@ -132,9 +124,7 @@ class TestErrorHandlingComprehensive:
         assert result == mock_context_result
         mock_ollama_client.analyze_image_context.assert_called_once()
 
-    def test_with_retry_success_on_second_attempt(
-        self, analyzer_with_retries, mock_ollama_client, mock_context_result
-    ):
+    def test_with_retry_success_on_second_attempt(self, analyzer_with_retries, mock_ollama_client, mock_context_result):
         """Test _with_retry() when operation fails first time but succeeds on retry."""
         # Setup - fail first time, succeed second time
         mock_ollama_client.analyze_image_context.side_effect = [
@@ -159,14 +149,10 @@ class TestErrorHandlingComprehensive:
         mock_sleep.assert_called_once()  # Should sleep before retry
 
     # Test 2: ContextAnalyzer retry logic - failure cases
-    def test_with_retry_all_attempts_fail_network_error(
-        self, analyzer_with_retries, mock_ollama_client, caplog
-    ):
+    def test_with_retry_all_attempts_fail_network_error(self, analyzer_with_retries, mock_ollama_client, caplog):
         """Test _with_retry() when all attempts fail with network error."""
         # Setup - always fail with network error
-        mock_ollama_client.analyze_image_context.side_effect = ConnectionError(
-            "Connection refused"
-        )
+        mock_ollama_client.analyze_image_context.side_effect = ConnectionError("Connection refused")
 
         # Execute with log capture
         with patch("time.sleep"):
@@ -182,17 +168,13 @@ class TestErrorHandlingComprehensive:
 
         # Verify
         assert result is None
-        assert (
-            mock_ollama_client.analyze_image_context.call_count == 3
-        )  # Initial + 2 retries
+        assert mock_ollama_client.analyze_image_context.call_count == 3  # Initial + 2 retries
         # Check that error was logged
         assert "Test analysis failed after" in caplog.text
         assert "Ollama connection failed" in caplog.text
         assert "check if Ollama server is running" in caplog.text
 
-    def test_with_retry_model_not_found_error(
-        self, analyzer_with_retries, mock_ollama_client, caplog
-    ):
+    def test_with_retry_model_not_found_error(self, analyzer_with_retries, mock_ollama_client, caplog):
         """Test _with_retry() with model not found error."""
         # Setup - fail with model not found error
         error_msg = "model 'llava-next:7b' not found, try pulling it first"
@@ -217,14 +199,10 @@ class TestErrorHandlingComprehensive:
         assert "verify model is pulled with 'ollama pull llava-next:7b'" in caplog.text
 
     # Test 3: ContextAnalyzer retry logic - various error types
-    def test_with_retry_timeout_error(
-        self, analyzer_with_retries, mock_ollama_client, caplog
-    ):
+    def test_with_retry_timeout_error(self, analyzer_with_retries, mock_ollama_client, caplog):
         """Test _with_retry() with TimeoutError."""
         # Setup - fail with TimeoutError
-        mock_ollama_client.analyze_image_context.side_effect = TimeoutError(
-            "Request timed out"
-        )
+        mock_ollama_client.analyze_image_context.side_effect = TimeoutError("Request timed out")
 
         # Execute with log capture
         with patch("time.sleep"):
@@ -244,14 +222,10 @@ class TestErrorHandlingComprehensive:
         assert "Ollama connection failed" in caplog.text
         assert "check if Ollama server is running" in caplog.text
 
-    def test_with_retry_connection_refused_error(
-        self, analyzer_with_retries, mock_ollama_client, caplog
-    ):
+    def test_with_retry_connection_refused_error(self, analyzer_with_retries, mock_ollama_client, caplog):
         """Test _with_retry() with ConnectionRefusedError."""
         # Setup - fail with ConnectionRefusedError
-        mock_ollama_client.analyze_image_context.side_effect = ConnectionRefusedError(
-            "Connection refused"
-        )
+        mock_ollama_client.analyze_image_context.side_effect = ConnectionRefusedError("Connection refused")
 
         # Execute with log capture
         with patch("time.sleep"):
@@ -271,9 +245,7 @@ class TestErrorHandlingComprehensive:
         assert "Ollama connection failed" in caplog.text
         assert "check if Ollama server is running" in caplog.text
 
-    def test_with_retry_os_error(
-        self, analyzer_with_retries, mock_ollama_client, caplog
-    ):
+    def test_with_retry_os_error(self, analyzer_with_retries, mock_ollama_client, caplog):
         """Test _with_retry() with OSError (e.g., socket timeout)."""
         # Setup - fail with OSError
         mock_ollama_client.analyze_image_context.side_effect = OSError("Socket timeout")
@@ -297,9 +269,7 @@ class TestErrorHandlingComprehensive:
         assert "check if Ollama server is running" in caplog.text
 
     # Test 4: ContextAnalyzer retry logic - disabled retries
-    def test_with_retry_disabled_success(
-        self, analyzer_without_retries, mock_ollama_client, mock_context_result
-    ):
+    def test_with_retry_disabled_success(self, analyzer_without_retries, mock_ollama_client, mock_context_result):
         """Test _with_retry() with retries disabled when operation succeeds."""
         # Setup
         mock_ollama_client.analyze_image_context.return_value = mock_context_result
@@ -318,14 +288,10 @@ class TestErrorHandlingComprehensive:
         assert result == mock_context_result
         mock_ollama_client.analyze_image_context.assert_called_once()
 
-    def test_with_retry_disabled_failure(
-        self, analyzer_without_retries, mock_ollama_client, caplog
-    ):
+    def test_with_retry_disabled_failure(self, analyzer_without_retries, mock_ollama_client, caplog):
         """Test _with_retry() with retries disabled when operation fails."""
         # Setup - fail with exception
-        mock_ollama_client.analyze_image_context.side_effect = ConnectionError(
-            "Connection refused"
-        )
+        mock_ollama_client.analyze_image_context.side_effect = ConnectionError("Connection refused")
 
         # Execute with log capture
         with caplog.at_level(logging.ERROR):
@@ -366,9 +332,7 @@ class TestErrorHandlingComprehensive:
         mock_ollama_client.analyze_image_context.side_effect = analyze_side_effect
 
         # Mock the model priority getters
-        analyzer_with_retries._get_primary_model_name = Mock(
-            return_value="llava-next:7b"
-        )
+        analyzer_with_retries._get_primary_model_name = Mock(return_value="llava-next:7b")
         analyzer_with_retries._get_fallback_model_name = Mock(return_value="moondream2")
 
         # Execute
@@ -402,9 +366,7 @@ class TestErrorHandlingComprehensive:
         mock_ollama_client.analyze_image_context.side_effect = analyze_side_effect
 
         # Mock the model priority getters
-        analyzer_with_retries._get_primary_model_name = Mock(
-            return_value="llava-next:7b"
-        )
+        analyzer_with_retries._get_primary_model_name = Mock(return_value="llava-next:7b")
         analyzer_with_retries._get_fallback_model_name = Mock(return_value="moondream2")
 
         # Execute
@@ -415,9 +377,7 @@ class TestErrorHandlingComprehensive:
         # Verify
         assert result == mock_context_result
         # Should have tried primary (with retries), then fallback
-        assert (
-            mock_ollama_client.analyze_image_context.call_count >= 4
-        )  # 3 primary attempts + 1 fallback
+        assert mock_ollama_client.analyze_image_context.call_count >= 4  # 3 primary attempts + 1 fallback
         # Should log about connection error
         assert "Ollama connection failed" in caplog.text
         # Should also log about trying fallback model
@@ -461,9 +421,7 @@ class TestErrorHandlingComprehensive:
         mock_ollama_client.analyze_image_context.side_effect = analyze_side_effect
 
         # Mock the model priority getters
-        analyzer_with_retries._get_primary_model_name = Mock(
-            return_value="llava-next:7b"
-        )
+        analyzer_with_retries._get_primary_model_name = Mock(return_value="llava-next:7b")
         analyzer_with_retries._get_fallback_model_name = Mock(return_value="moondream2")
 
         # Execute
@@ -472,9 +430,7 @@ class TestErrorHandlingComprehensive:
                 result = analyzer_with_retries._analyze_default("test.jpg")
 
         # Verify
-        assert (
-            result == mock_context_result
-        )  # Should return fallback result, not low confidence result
+        assert result == mock_context_result  # Should return fallback result, not low confidence result
         # Should have tried primary, then fallback
         assert mock_ollama_client.analyze_image_context.call_count >= 2
         # Should log about trying fallback model due to low confidence
@@ -534,9 +490,7 @@ class TestErrorHandlingComprehensive:
                 mock_ollama.generate.return_value = {"response": test_case["response"]}
 
                 # Mock other methods
-                ollama_client._prepare_image_input = Mock(
-                    return_value="/fake/image.jpg"
-                )
+                ollama_client._prepare_image_input = Mock(return_value="/fake/image.jpg")
                 ollama_client.is_model_available = Mock(return_value=True)
 
                 with caplog.at_level(logging.WARNING):
@@ -548,9 +502,7 @@ class TestErrorHandlingComprehensive:
 
                 # Verify assertions based on test case
                 if test_case["expected_result"] is None:
-                    assert result is None, (
-                        f"Test case '{test_case['name']}': Expected None but got {result}"
-                    )
+                    assert result is None, f"Test case '{test_case['name']}': Expected None but got {result}"
                 elif test_case["expected_result"] == ContextAnalysisResult:
                     assert result is not None, (
                         f"Test case '{test_case['name']}': Expected ContextAnalysisResult but got None"
@@ -707,9 +659,7 @@ class TestErrorHandlingComprehensive:
             )
 
     # Test 9: Edge cases and error recovery
-    def test_with_retry_operation_returns_none(
-        self, analyzer_with_retries, mock_ollama_client, caplog
-    ):
+    def test_with_retry_operation_returns_none(self, analyzer_with_retries, mock_ollama_client, caplog):
         """Test _with_retry() when operation returns None (not an exception)."""
         # Setup - operation returns None
         mock_ollama_client.analyze_image_context.return_value = None
@@ -733,9 +683,7 @@ class TestErrorHandlingComprehensive:
         # Check debug log for None return
         assert "returned None on attempt" in caplog.text
 
-    def test_with_retry_exponential_backoff(
-        self, analyzer_with_retries, mock_ollama_client
-    ):
+    def test_with_retry_exponential_backoff(self, analyzer_with_retries, mock_ollama_client):
         """Test _with_retry() uses exponential backoff with jitter."""
         # Setup - fail first time, succeed second time
         mock_ollama_client.analyze_image_context.side_effect = [
@@ -826,9 +774,7 @@ class TestErrorHandlingComprehensive:
         """Test analyze_image_context() with response containing no JSON."""
         with patch("photochron.models.ollama_client.ollama") as mock_ollama:
             # Mock the generate method to return non-JSON response
-            mock_ollama.generate.return_value = {
-                "response": "I cannot analyze this image."
-            }
+            mock_ollama.generate.return_value = {"response": "I cannot analyze this image."}
 
             # Mock other methods
             ollama_client._prepare_image_input = Mock(return_value="/fake/image.jpg")
@@ -846,9 +792,7 @@ class TestErrorHandlingComprehensive:
             assert "No JSON found in response" in caplog.text
 
     # Test 12: Error handling with different analysis strategies
-    def test_analyze_with_different_strategies_on_error(
-        self, mock_ollama_client, caplog
-    ):
+    def test_analyze_with_different_strategies_on_error(self, mock_ollama_client, caplog):
         """Test error handling with different analysis strategies."""
         strategies = [
             (AnalysisStrategy.DEFAULT, True),  # Should retry
@@ -870,9 +814,7 @@ class TestErrorHandlingComprehensive:
             analyzer = ContextAnalyzer(ollama_client=mock_ollama_client, config=config)
 
             # Setup - always fail with connection error
-            mock_ollama_client.analyze_image_context.side_effect = ConnectionError(
-                "Connection refused"
-            )
+            mock_ollama_client.analyze_image_context.side_effect = ConnectionError("Connection refused")
 
             # Execute - call the public analyze method with the strategy
             with patch("time.sleep"):
@@ -886,26 +828,18 @@ class TestErrorHandlingComprehensive:
                 # Should have retried (initial + max_retries)
                 # Note: All strategies with enable_retries=True should retry
                 assert mock_ollama_client.analyze_image_context.call_count >= 3
-                assert (
-                    "Primary model analysis failed after" in caplog.text
-                    or "Analysis failed after" in caplog.text
-                )
+                assert "Primary model analysis failed after" in caplog.text or "Analysis failed after" in caplog.text
             else:
                 # If a strategy shouldn't retry, it would only try once
                 assert mock_ollama_client.analyze_image_context.call_count == 1
-                assert (
-                    "Primary model analysis failed after" in caplog.text
-                    or "Analysis failed after" in caplog.text
-                )
+                assert "Primary model analysis failed after" in caplog.text or "Analysis failed after" in caplog.text
 
             # Reset mock for next iteration
             mock_ollama_client.analyze_image_context.reset_mock()
             caplog.clear()
 
     # Test 13: Comprehensive error scenario - chain of failures
-    def test_comprehensive_error_scenario_chain_of_failures(
-        self, analyzer_with_retries, mock_ollama_client, caplog
-    ):
+    def test_comprehensive_error_scenario_chain_of_failures(self, analyzer_with_retries, mock_ollama_client, caplog):
         """Test comprehensive error scenario with chain of failures."""
 
         # Setup - primary model fails with connection error, fallback fails with timeout
@@ -920,9 +854,7 @@ class TestErrorHandlingComprehensive:
         mock_ollama_client.analyze_image_context.side_effect = analyze_side_effect
 
         # Mock the model priority getters
-        analyzer_with_retries._get_primary_model_name = Mock(
-            return_value="llava-next:7b"
-        )
+        analyzer_with_retries._get_primary_model_name = Mock(return_value="llava-next:7b")
         analyzer_with_retries._get_fallback_model_name = Mock(return_value="moondream2")
 
         # Execute
@@ -943,11 +875,9 @@ class TestErrorHandlingComprehensive:
     # Test 14: Error handling with invalid image input
     def test_analyze_image_context_invalid_image_input(self, ollama_client, caplog):
         """Test analyze_image_context() with invalid image input."""
-        with patch("photochron.models.ollama_client.ollama") as mock_ollama:
+        with patch("photochron.models.ollama_client.ollama"):
             # Mock _prepare_image_input to raise exception for invalid image
-            ollama_client._prepare_image_input = Mock(
-                side_effect=ValueError("Invalid image format")
-            )
+            ollama_client._prepare_image_input = Mock(side_effect=ValueError("Invalid image format"))
             ollama_client.is_model_available = Mock(return_value=True)
 
             with caplog.at_level(logging.ERROR):
@@ -964,7 +894,7 @@ class TestErrorHandlingComprehensive:
     # Test 15: Error handling with model not available
     def test_analyze_image_context_model_not_available(self, ollama_client, caplog):
         """Test analyze_image_context() when model is not available."""
-        with patch("photochron.models.ollama_client.ollama") as mock_ollama:
+        with patch("photochron.models.ollama_client.ollama"):
             # Mock is_model_available to return False
             ollama_client.is_model_available = Mock(return_value=False)
             ollama_client._prepare_image_input = Mock(return_value="/fake/image.jpg")

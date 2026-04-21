@@ -128,6 +128,4 @@ def _validate_constraints(cs: ConstraintSet) -> None:
     for file, bounds in by_file.items():
         a, b = bounds["after"], bounds["before"]
         if a and b and date.fromisoformat(a) >= date.fromisoformat(b):
-            raise ValueError(
-                f"Contradicting hard constraints for {file}: after={a} not before before={b}"
-            )
+            raise ValueError(f"Contradicting hard constraints for {file}: after={a} not before before={b}")

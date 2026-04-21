@@ -2,17 +2,16 @@
 Unit tests for the FaceLayerStage.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import numpy as np
 import tempfile
-import shutil
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
 from PIL import Image
 
-from photochron.pipeline.stages.face_layer import FaceLayerStage
 from photochron.config import Config, ConfigFace
-from photochron.store import get_store
+from photochron.pipeline.stages.face_layer import FaceLayerStage
 
 
 class TestFaceLayerStage:
@@ -22,12 +21,8 @@ class TestFaceLayerStage:
     def stage(self):
         """Create a FaceLayerStage instance with mocked config and wrapper."""
         with (
-            patch(
-                "photochron.pipeline.stages.face_layer.get_config"
-            ) as mock_get_config,
-            patch(
-                "photochron.pipeline.stages.face_layer.InsightFaceWrapper"
-            ) as mock_wrapper_class,
+            patch("photochron.pipeline.stages.face_layer.get_config") as mock_get_config,
+            patch("photochron.pipeline.stages.face_layer.InsightFaceWrapper") as mock_wrapper_class,
         ):
             # Setup config mock
             mock_config = Mock(spec=Config)
@@ -119,9 +114,7 @@ class TestFaceLayerStage:
                 assert face["person_id"] is None
                 assert np.allclose(face["embedding"], embedding)
                 assert face["age_estimate"] == age_mean
-                expected_age_std = max(
-                    age_std * stage.config.face.age_confidence_scale, 1.0
-                )
+                expected_age_std = max(age_std * stage.config.face.age_confidence_scale, 1.0)
                 assert face["age_std"] == expected_age_std
                 assert face["confidence"] == confidence
                 assert face["bbox_x1"] == bbox[0]

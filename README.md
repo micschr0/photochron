@@ -47,6 +47,32 @@ See [docs/pipeline.md](docs/pipeline.md) for a deep dive into each stage.
 
 ---
 
+## What you get
+
+PhotoChron never touches your originals. It writes copies into `{output_dir}/` with two complementary layouts:
+
+```
+photochron_output/
+├── renamed/                                  ← Mode A: chronologically sorted filenames
+│   ├── 0001_1987-est_scan_0042.jpg           (prefix = sort rank, then estimated year)
+│   ├── 0002_1987-est_scan_0017.jpg
+│   ├── 0003_1988-est_scan_0091.jpg
+│   └── ...
+├── exif_enriched/                            ← Mode B: original names, enriched EXIF
+│   ├── scan_0042.jpg                         (DateTimeOriginal = 1987:01:01, UserComment = result JSON)
+│   ├── scan_0017.jpg
+│   └── ...
+├── photochron_report.json                    ← per-photo confidence, anchors used, flags
+└── photochron_timeline.csv                   ← flat timeline for spreadsheets
+```
+
+**Mode A** lets you drop the `renamed/` folder into any photo viewer and browse your family history in order.
+**Mode B** preserves original filenames but writes the estimated date into EXIF, so Apple Photos / Lightroom / digiKam pick it up automatically.
+
+Photos flagged with low confidence end up in `review_needed = true` in `photochron_report.json` — PhotoChron surfaces uncertainty rather than guessing silently.
+
+---
+
 ## ⚠️ Alpha status
 
 PhotoChron is in **early alpha**. The following CLI commands are currently **demo stubs** and do not yet execute the full pipeline:

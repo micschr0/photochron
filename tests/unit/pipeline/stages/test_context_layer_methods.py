@@ -2,15 +2,15 @@
 Unit tests for ContextLayerStage storage methods.
 """
 
-import pytest
 import json
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime
+from unittest.mock import MagicMock, Mock, patch
 
-from photochron.pipeline.stages.context_layer import ContextLayerStage
+import pytest
+
 from photochron.config import Config, ConfigContext
-from photochron.models.ollama_client import ContextAnalysisResult, ModelType
 from photochron.models import ContextCreate
+from photochron.models.ollama_client import ContextAnalysisResult
+from photochron.pipeline.stages.context_layer import ContextLayerStage
 
 
 class TestContextLayerStageStorageMethods:
@@ -56,9 +56,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -89,9 +87,7 @@ class TestContextLayerStageStorageMethods:
             mock_result.alternative_decades = ["1985-1990", "1995-2000"]
             mock_result.uncertainty_flag = False
             mock_result.hypothesis_notes = "Clear summer beach scene"
-            mock_result.model_dump_json.return_value = (
-                '{"decade": "1990-1995", "confidence": 0.85}'
-            )
+            mock_result.model_dump_json.return_value = '{"decade": "1990-1995", "confidence": 0.85}'
 
             # Create mock store and helper
             mock_store = Mock()
@@ -136,13 +132,9 @@ class TestContextLayerStageStorageMethods:
             assert context_data.alternative_decades == ["1985-1990", "1995-2000"]
             assert context_data.uncertainty_flag is False
             assert context_data.hypothesis_notes == "Clear summer beach scene"
-            assert (
-                context_data.raw_json == '{"decade": "1990-1995", "confidence": 0.85}'
-            )
+            assert context_data.raw_json == '{"decade": "1990-1995", "confidence": 0.85}'
 
-    def test_store_context_result_without_model_dump_json(
-        self, mock_config, mock_analyzer
-    ):
+    def test_store_context_result_without_model_dump_json(self, mock_config, mock_analyzer):
         """Test _store_context_result when result doesn't have model_dump_json method."""
         with (
             patch(
@@ -153,9 +145,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -229,9 +219,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -313,9 +301,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -394,9 +380,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -451,9 +435,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -507,9 +489,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {
@@ -547,9 +527,7 @@ class TestContextLayerStageStorageMethods:
                 "photochron.pipeline.stages.context_layer.ContextAnalyzer",
                 return_value=mock_analyzer,
             ),
-            patch(
-                "photochron.pipeline.stages.context_layer.get_store"
-            ) as mock_get_store,
+            patch("photochron.pipeline.stages.context_layer.get_store") as mock_get_store,
         ):
             # Mock health check
             mock_analyzer.health_check.return_value = {

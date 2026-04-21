@@ -105,12 +105,8 @@ class OutputLayerStage(PipelineStage):
         timeline_csv = build_timeline_rows(report_rows)
 
         if not dry_run:
-            (output_dir / "photochron_report.json").write_text(
-                json.dumps(report_payload, indent=2), encoding="utf-8"
-            )
-            (output_dir / "photochron_timeline.csv").write_text(
-                timeline_csv, encoding="utf-8"
-            )
+            (output_dir / "photochron_report.json").write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
+            (output_dir / "photochron_timeline.csv").write_text(timeline_csv, encoding="utf-8")
 
         logger.info(
             "Output layer complete: {} photos written, {} skipped (dry_run={})",

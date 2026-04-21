@@ -58,9 +58,7 @@ class QueryHelper:
 
     def get_photo_by_hash(self, content_hash: str) -> Photo | None:
         """Get photo by content hash."""
-        cursor = self.conn.execute(
-            "SELECT * FROM photos WHERE content_hash = ?", (content_hash,)
-        )
+        cursor = self.conn.execute("SELECT * FROM photos WHERE content_hash = ?", (content_hash,))
         row = cursor.fetchone()
         return Photo.model_validate(dict(row)) if row else None
 
@@ -86,9 +84,7 @@ class QueryHelper:
 
     def get_person_by_person_id(self, person_id: str) -> Person | None:
         """Get person by user-defined person_id."""
-        cursor = self.conn.execute(
-            "SELECT * FROM persons WHERE person_id = ?", (person_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM persons WHERE person_id = ?", (person_id,))
         row = cursor.fetchone()
         return Person.model_validate(dict(row)) if row else None
 
@@ -110,9 +106,7 @@ class QueryHelper:
         return existing.id
 
     # Anchor constraint operations
-    def upsert_anchor_constraints(
-        self, run_id: str, constraints_json: str, source_path: str | None = None
-    ) -> None:
+    def upsert_anchor_constraints(self, run_id: str, constraints_json: str, source_path: str | None = None) -> None:
         """Persist serialized ConstraintSet for the given run (replaces existing)."""
         self.conn.execute(
             """
@@ -139,7 +133,8 @@ class QueryHelper:
         """Insert a new face record and return its ID."""
         cursor = self.conn.execute(
             """
-            INSERT INTO faces (photo_id, person_id, embedding, age_estimate, age_std, confidence, bbox_x1, bbox_y1, bbox_x2, bbox_y2)
+            INSERT INTO faces (photo_id, person_id, embedding, age_estimate, age_std, confidence,
+                               bbox_x1, bbox_y1, bbox_x2, bbox_y2)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -159,30 +154,20 @@ class QueryHelper:
 
     def get_faces_by_photo_id(self, photo_id: int) -> list[Face]:
         """Get all faces for a photo."""
-        cursor = self.conn.execute(
-            "SELECT * FROM faces WHERE photo_id = ? ORDER BY id", (photo_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM faces WHERE photo_id = ? ORDER BY id", (photo_id,))
         return [Face.model_validate(dict(row)) for row in cursor.fetchall()]
 
     def get_faces_by_person_id(self, person_id: int) -> list[Face]:
         """Get all faces for a person."""
-        cursor = self.conn.execute(
-            "SELECT * FROM faces WHERE person_id = ? ORDER BY id", (person_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM faces WHERE person_id = ? ORDER BY id", (person_id,))
         return [Face.model_validate(dict(row)) for row in cursor.fetchall()]
 
     # Context operations
     def insert_context(self, context: ContextCreate) -> int:
         """Insert a new context record and return its ID."""
         # Convert list fields to JSON strings for storage
-        visual_evidence_json = (
-            json.dumps(context.visual_evidence) if context.visual_evidence else None
-        )
-        alternative_decades_json = (
-            json.dumps(context.alternative_decades)
-            if context.alternative_decades
-            else None
-        )
+        visual_evidence_json = json.dumps(context.visual_evidence) if context.visual_evidence else None
+        alternative_decades_json = json.dumps(context.alternative_decades) if context.alternative_decades else None
 
         cursor = self.conn.execute(
             """
@@ -219,14 +204,8 @@ class QueryHelper:
         Returns the ID of the inserted/updated record.
         """
         # Convert list fields to JSON strings for storage
-        visual_evidence_json = (
-            json.dumps(context.visual_evidence) if context.visual_evidence else None
-        )
-        alternative_decades_json = (
-            json.dumps(context.alternative_decades)
-            if context.alternative_decades
-            else None
-        )
+        visual_evidence_json = json.dumps(context.visual_evidence) if context.visual_evidence else None
+        alternative_decades_json = json.dumps(context.alternative_decades) if context.alternative_decades else None
 
         cursor = self.conn.execute(
             """
@@ -258,9 +237,7 @@ class QueryHelper:
 
     def get_context_by_photo_id(self, photo_id: int) -> Context | None:
         """Get context for a photo."""
-        cursor = self.conn.execute(
-            "SELECT * FROM context WHERE photo_id = ?", (photo_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM context WHERE photo_id = ?", (photo_id,))
         row = cursor.fetchone()
         if not row:
             return None
@@ -277,9 +254,7 @@ class QueryHelper:
 
         if row_dict.get("alternative_decades"):
             try:
-                row_dict["alternative_decades"] = json.loads(
-                    row_dict["alternative_decades"]
-                )
+                row_dict["alternative_decades"] = json.loads(row_dict["alternative_decades"])
             except (json.JSONDecodeError, TypeError):
                 row_dict["alternative_decades"] = None
 
@@ -298,9 +273,7 @@ class QueryHelper:
         )
         return [Photo.model_validate(dict(row)) for row in cursor.fetchall()]
 
-    def get_photos_without_context_batch(
-        self, batch_size: int = 100, offset: int = 0
-    ) -> list[Photo]:
+    def get_photos_without_context_batch(self, batch_size: int = 100, offset: int = 0) -> list[Photo]:
         """Get photos without context analysis in batches.
 
         Args:
@@ -323,9 +296,7 @@ class QueryHelper:
         )
         return [Photo.model_validate(dict(row)) for row in cursor.fetchall()]
 
-    def get_faces_with_person_by_photo(
-        self, photo_id: int
-    ) -> list[dict[str, Any]]:
+    def get_faces_with_person_by_photo(self, photo_id: int) -> list[dict[str, Any]]:
         """Return face rows joined with person.birthday for a given photo."""
         cursor = self.conn.execute(
             """
@@ -347,7 +318,8 @@ class QueryHelper:
         """Insert a new ranking record and return its ID."""
         cursor = self.conn.execute(
             """
-            INSERT INTO rankings (photo_id, sort_rank, estimated_year, estimated_month, confidence, review_needed, ranking_json)
+            INSERT INTO rankings (photo_id, sort_rank, estimated_year, estimated_month, confidence,
+                                  review_needed, ranking_json)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -364,9 +336,7 @@ class QueryHelper:
 
     def get_ranking_by_photo_id(self, photo_id: int) -> Ranking | None:
         """Get ranking for a photo."""
-        cursor = self.conn.execute(
-            "SELECT * FROM rankings WHERE photo_id = ?", (photo_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM rankings WHERE photo_id = ?", (photo_id,))
         row = cursor.fetchone()
         return Ranking.model_validate(dict(row)) if row else None
 
@@ -380,7 +350,8 @@ class QueryHelper:
         """Insert a new pipeline run record and return its ID."""
         cursor = self.conn.execute(
             """
-            INSERT INTO pipeline_runs (run_id, schema_version, config_hash, insightface_version, ollama_version, start_time, status, photos_processed)
+            INSERT INTO pipeline_runs (run_id, schema_version, config_hash, insightface_version,
+                                       ollama_version, start_time, status, photos_processed)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -389,9 +360,7 @@ class QueryHelper:
                 run.config_hash,
                 run.insightface_version,
                 run.ollama_version,
-                run.start_time.isoformat()
-                if isinstance(run.start_time, datetime)
-                else run.start_time,
+                run.start_time.isoformat() if isinstance(run.start_time, datetime) else run.start_time,
                 run.status,
                 run.photos_processed,
             ),
@@ -407,23 +376,17 @@ class QueryHelper:
         values = list(updates.values())
         values.append(run_id)
 
-        self.conn.execute(
-            f"UPDATE pipeline_runs SET {set_clause} WHERE run_id = ?", values
-        )
+        self.conn.execute(f"UPDATE pipeline_runs SET {set_clause} WHERE run_id = ?", values)
 
     def get_pipeline_run(self, run_id: str) -> PipelineRun | None:
         """Get pipeline run by ID."""
-        cursor = self.conn.execute(
-            "SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,))
         row = cursor.fetchone()
         return PipelineRun.model_validate(dict(row)) if row else None
 
     def get_latest_pipeline_run(self) -> PipelineRun | None:
         """Get the most recent pipeline run."""
-        cursor = self.conn.execute(
-            "SELECT * FROM pipeline_runs ORDER BY start_time DESC LIMIT 1"
-        )
+        cursor = self.conn.execute("SELECT * FROM pipeline_runs ORDER BY start_time DESC LIMIT 1")
         row = cursor.fetchone()
         return PipelineRun.model_validate(dict(row)) if row else None
 

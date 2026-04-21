@@ -2,22 +2,20 @@
 Simple integration test for FaceLayerStage that passes.
 """
 
-import pytest
 import tempfile
-import shutil
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
+
 import numpy as np
-from datetime import datetime
+import pytest
 
-from photochron.pipeline.stages.face_layer import FaceLayerStage
-from photochron.store import DatabaseStore, get_store
 from photochron.config import Config, ConfigFace
+from photochron.pipeline.stages.face_layer import FaceLayerStage
+from photochron.store import DatabaseStore
 
 
-def _create_pipeline_run(
-    store: DatabaseStore, run_id: str, config_hash: str = "test_hash"
-):
+def _create_pipeline_run(store: DatabaseStore, run_id: str, config_hash: str = "test_hash"):
     """Insert a pipeline run record so mark_complete can update it."""
     with store.transaction() as conn:
         conn.execute(
@@ -43,9 +41,7 @@ def test_face_layer_basic_integration(database_store, monkeypatch):
     mock_config.face.use_gpu = False
     mock_config.face.batch_size = 1
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.face_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
 
     # Create a temporary directory for downsampled images
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -63,9 +59,7 @@ def test_face_layer_basic_integration(database_store, monkeypatch):
         monkeypatch.setattr("photochron.store.get_store", lambda: store)
         monkeypatch.setattr("photochron.store._store", store)
         monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.face_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_store", lambda: store)
         with store.transaction() as conn:
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -99,15 +93,11 @@ def test_face_layer_basic_integration(database_store, monkeypatch):
 
         # Mock _get_photos_without_faces to return our photo
         with patch.object(stage, "_get_photos_without_faces") as mock_get_photos:
-            mock_get_photos.return_value = [
-                {"id": photo_id, "downsample_path": str(dummy_image_path)}
-            ]
+            mock_get_photos.return_value = [{"id": photo_id, "downsample_path": str(dummy_image_path)}]
 
             # Mock _load_downsampled_image to return a dummy numpy array
             dummy_image = np.zeros((480, 640, 3), dtype=np.uint8)
-            with patch.object(
-                stage, "_load_downsampled_image", return_value=dummy_image
-            ):
+            with patch.object(stage, "_load_downsampled_image", return_value=dummy_image):
                 run_id = "test_run_integration"
                 config_hash = "test_hash"
                 _create_pipeline_run(store, run_id, config_hash)
@@ -119,16 +109,12 @@ def test_face_layer_basic_integration(database_store, monkeypatch):
             face_count = cursor.fetchone()[0]
             assert face_count == 1
 
-            cursor = conn.execute(
-                "SELECT photo_id, confidence, age_estimate, age_std FROM faces"
-            )
+            cursor = conn.execute("SELECT photo_id, confidence, age_estimate, age_std FROM faces")
             face = cursor.fetchone()
             assert face["photo_id"] == photo_id
             assert face["confidence"] == confidence
             assert face["age_estimate"] == age_mean
-            assert face["age_std"] == max(
-                age_std * mock_config.face.age_confidence_scale, 1.0
-            )
+            assert face["age_std"] == max(age_std * mock_config.face.age_confidence_scale, 1.0)
 
 
 @pytest.mark.integration
@@ -144,9 +130,7 @@ def test_duplicate_detection(database_store, monkeypatch):
     mock_config.face.use_gpu = False
     mock_config.face.batch_size = 1
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.face_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
 
     # Insert a photo with an existing face record
     store = database_store
@@ -154,9 +138,7 @@ def test_duplicate_detection(database_store, monkeypatch):
     monkeypatch.setattr("photochron.store.get_store", lambda: store)
     monkeypatch.setattr("photochron.store._store", store)
     monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.face_layer.get_store", lambda: store
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_store", lambda: store)
     with store.transaction() as conn:
         conn.execute(
             "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -178,9 +160,7 @@ def test_duplicate_detection(database_store, monkeypatch):
     # Mock InsightFaceWrapper
     mock_wrapper = Mock()
     mock_wrapper_class = Mock(return_value=mock_wrapper)
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.face_layer.InsightFaceWrapper", mock_wrapper_class
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.face_layer.InsightFaceWrapper", mock_wrapper_class)
 
     # Create face layer stage
     stage = FaceLayerStage()
@@ -217,9 +197,7 @@ def test_configuration_thresholds(database_store, monkeypatch):
     mock_config.face.use_gpu = False
     mock_config.face.batch_size = 1
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.face_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
 
     # Create temporary directory and photo record
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -234,9 +212,7 @@ def test_configuration_thresholds(database_store, monkeypatch):
         monkeypatch.setattr("photochron.store.get_store", lambda: store)
         monkeypatch.setattr("photochron.store._store", store)
         monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.face_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_store", lambda: store)
         with store.transaction() as conn:
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -263,14 +239,10 @@ def test_configuration_thresholds(database_store, monkeypatch):
         stage = FaceLayerStage()
 
         with patch.object(stage, "_get_photos_without_faces") as mock_get_photos:
-            mock_get_photos.return_value = [
-                {"id": photo_id, "downsample_path": str(dummy_image_path)}
-            ]
+            mock_get_photos.return_value = [{"id": photo_id, "downsample_path": str(dummy_image_path)}]
 
             dummy_image = np.zeros((480, 640, 3), dtype=np.uint8)
-            with patch.object(
-                stage, "_load_downsampled_image", return_value=dummy_image
-            ):
+            with patch.object(stage, "_load_downsampled_image", return_value=dummy_image):
                 run_id = "test_run_threshold"
                 config_hash = "test_hash"
                 _create_pipeline_run(store, run_id, config_hash)
@@ -298,9 +270,7 @@ def test_no_faces_detected(database_store, monkeypatch):
     mock_config.face.use_gpu = False
     mock_config.face.batch_size = 1
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.face_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
 
     # Create temporary directory and photo record
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -312,18 +282,10 @@ def test_no_faces_detected(database_store, monkeypatch):
 
         store = database_store
         # Monkeypatch get_store to use our test database (both module and store)
-        monkeypatch.setattr(
-            "photochron.store.get_store", lambda: store
-        )
-        monkeypatch.setattr(
-            "photochron.store._store", store
-        )
-        monkeypatch.setattr(
-            "photochron.pipeline.get_store", lambda: store
-        )
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.face_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.store.get_store", lambda: store)
+        monkeypatch.setattr("photochron.store._store", store)
+        monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
+        monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_store", lambda: store)
         with store.transaction() as conn:
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -348,14 +310,10 @@ def test_no_faces_detected(database_store, monkeypatch):
         stage = FaceLayerStage()
 
         with patch.object(stage, "_get_photos_without_faces") as mock_get_photos:
-            mock_get_photos.return_value = [
-                {"id": photo_id, "downsample_path": str(dummy_image_path)}
-            ]
+            mock_get_photos.return_value = [{"id": photo_id, "downsample_path": str(dummy_image_path)}]
 
             dummy_image = np.zeros((480, 640, 3), dtype=np.uint8)
-            with patch.object(
-                stage, "_load_downsampled_image", return_value=dummy_image
-            ):
+            with patch.object(stage, "_load_downsampled_image", return_value=dummy_image):
                 run_id = "test_run_nofaces"
                 config_hash = "test_hash"
                 _create_pipeline_run(store, run_id, config_hash)
@@ -383,9 +341,7 @@ def test_person_matching(database_store, monkeypatch):
     mock_config.face.use_gpu = False
     mock_config.face.batch_size = 1
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.face_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
 
     # Create temporary directory and photo record
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -397,18 +353,10 @@ def test_person_matching(database_store, monkeypatch):
 
         store = database_store
         # Monkeypatch get_store to use our test database (both module and store)
-        monkeypatch.setattr(
-            "photochron.store.get_store", lambda: store
-        )
-        monkeypatch.setattr(
-            "photochron.store._store", store
-        )
-        monkeypatch.setattr(
-            "photochron.pipeline.get_store", lambda: store
-        )
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.face_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.store.get_store", lambda: store)
+        monkeypatch.setattr("photochron.store._store", store)
+        monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
+        monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_store", lambda: store)
 
         # Add embedding column to persons table (if not exists)
         with store.transaction() as conn:
@@ -432,7 +380,11 @@ def test_person_matching(database_store, monkeypatch):
             # Insert a photo record
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
-                ("hash_person_match", "/fake/original_person.jpg", str(dummy_image_path)),
+                (
+                    "hash_person_match",
+                    "/fake/original_person.jpg",
+                    str(dummy_image_path),
+                ),
             )
             cursor = conn.execute("SELECT id, downsample_path FROM photos")
             photo = cursor.fetchone()
@@ -458,14 +410,10 @@ def test_person_matching(database_store, monkeypatch):
         stage = FaceLayerStage()
 
         with patch.object(stage, "_get_photos_without_faces") as mock_get_photos:
-            mock_get_photos.return_value = [
-                {"id": photo_id, "downsample_path": str(dummy_image_path)}
-            ]
+            mock_get_photos.return_value = [{"id": photo_id, "downsample_path": str(dummy_image_path)}]
 
             dummy_image = np.zeros((480, 640, 3), dtype=np.uint8)
-            with patch.object(
-                stage, "_load_downsampled_image", return_value=dummy_image
-            ):
+            with patch.object(stage, "_load_downsampled_image", return_value=dummy_image):
                 run_id = "test_run_person_match"
                 config_hash = "test_hash"
                 _create_pipeline_run(store, run_id, config_hash)
@@ -473,10 +421,7 @@ def test_person_matching(database_store, monkeypatch):
 
         # Verify face was stored with correct person_id
         with store.transaction() as conn:
-            cursor = conn.execute(
-                "SELECT person_id FROM faces WHERE photo_id = ?",
-                (photo_id,)
-            )
+            cursor = conn.execute("SELECT person_id FROM faces WHERE photo_id = ?", (photo_id,))
             face = cursor.fetchone()
             assert face is not None
             # Should match the person we inserted

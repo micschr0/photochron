@@ -5,13 +5,14 @@ Profile face detection performance for PhotoChron face layer.
 Measures detection time on CPU (and optionally GPU) with realistic image sizes.
 """
 
-import time
+import argparse
 import statistics
+import sys
+import time
 from pathlib import Path
+
 import numpy as np
 from PIL import Image
-import sys
-import argparse
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -46,20 +47,12 @@ def profile_detection(wrapper, image, num_runs=10, warmup=2):
 def main():
     parser = argparse.ArgumentParser(description="Profile face detection performance")
     parser.add_argument("--image", type=Path, help="Path to test image (optional)")
-    parser.add_argument(
-        "--width", type=int, default=1024, help="Image width for synthetic image"
-    )
-    parser.add_argument(
-        "--height", type=int, default=768, help="Image height for synthetic image"
-    )
-    parser.add_argument(
-        "--runs", type=int, default=10, help="Number of measurement runs"
-    )
+    parser.add_argument("--width", type=int, default=1024, help="Image width for synthetic image")
+    parser.add_argument("--height", type=int, default=768, help="Image height for synthetic image")
+    parser.add_argument("--runs", type=int, default=10, help="Number of measurement runs")
     parser.add_argument("--warmup", type=int, default=2, help="Number of warmup runs")
     parser.add_argument("--gpu", action="store_true", help="Use GPU if available")
-    parser.add_argument(
-        "--threshold", type=float, default=0.5, help="Detection confidence threshold"
-    )
+    parser.add_argument("--threshold", type=float, default=0.5, help="Detection confidence threshold")
     args = parser.parse_args()
 
     # Load or create test image
@@ -94,7 +87,7 @@ def main():
     for i, (bbox, conf) in enumerate(detections):
         print(f"  Face {i + 1}: bbox {bbox}, confidence {conf:.3f}")
 
-    print(f"\nTiming results (seconds):")
+    print("\nTiming results (seconds):")
     print(f"  Min: {min(times):.4f}")
     print(f"  Max: {max(times):.4f}")
     print(f"  Mean: {statistics.mean(times):.4f}")

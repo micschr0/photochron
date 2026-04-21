@@ -5,16 +5,16 @@ This module provides a client for interacting with the local Ollama server
 for vision LLM analysis of photos.
 """
 
-import json
-import time
 import base64
-import os
-import re
-import random
+import json
 import math
-from typing import Optional, Dict, Any, List, Literal
+import os
+import random
+import re
+import time
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
+from typing import Any, Literal
 
 import ollama
 from loguru import logger
@@ -27,7 +27,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB in bytes
 MAX_BASE64_SIZE = int(MAX_FILE_SIZE * 4 / 3) + 100  # Add padding for safety
 
 
-class ModelType(str, Enum):
+class ModelType(StrEnum):
     """Supported vision LLM models."""
 
     LLAVA_NEXT_7B = "llava-next:7b"
@@ -37,52 +37,34 @@ class ModelType(str, Enum):
 class ContextAnalysisResult(BaseModel):
     """Structured result from context analysis."""
 
-    decade: Optional[str] = Field(
-        None, description="Estimated decade range (e.g., '1985-1990')"
-    )
-    decade_confidence: float = Field(
-        0.0, ge=0.0, le=1.0, description="Confidence in decade estimate (0.0-1.0)"
-    )
-    season: Optional[Literal["spring", "summer", "autumn", "winter"]] = Field(
+    decade: str | None = Field(None, description="Estimated decade range (e.g., '1985-1990')")
+    decade_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Confidence in decade estimate (0.0-1.0)")
+    season: Literal["spring", "summer", "autumn", "winter"] | None = Field(
         None, description="Season: 'spring', 'summer', 'autumn', 'winter'"
     )
-    event_hint: Optional[str] = Field(
-        None, description="Event hint (e.g., 'wedding', 'birthday', 'graduation')"
-    )
-    photo_medium: Literal[
-        "digital", "print_scan", "polaroid", "film_negative", "unknown"
-    ] = Field(
+    event_hint: str | None = Field(None, description="Event hint (e.g., 'wedding', 'birthday', 'graduation')")
+    photo_medium: Literal["digital", "print_scan", "polaroid", "film_negative", "unknown"] = Field(
         "digital",
         description="Photo medium: 'digital', 'print_scan', 'polaroid', 'film_negative', 'unknown'",
     )
-    photo_medium_confidence: Optional[float] = Field(
+    photo_medium_confidence: float | None = Field(
         None,
         ge=0.0,
         le=1.0,
         description="Confidence in photo medium estimate (0.0-1.0)",
     )
-    visual_evidence: Optional[List[str]] = Field(
+    visual_evidence: list[str] | None = Field(
         None, description="List of specific visual cues that informed the analysis"
     )
-    season_confidence: Optional[float] = Field(
-        None, ge=0.0, le=1.0, description="Confidence in season estimate (0.0-1.0)"
-    )
-    event_confidence: Optional[float] = Field(
-        None, ge=0.0, le=1.0, description="Confidence in event hint (0.0-1.0)"
-    )
-    alternative_decades: Optional[List[str]] = Field(
-        None, description="Alternative decade possibilities when uncertain"
-    )
-    uncertainty_flag: Optional[bool] = Field(
-        None, description="Flag indicating high uncertainty in analysis"
-    )
-    hypothesis_notes: Optional[str] = Field(
-        None, description="Explanation when multiple hypotheses exist"
-    )
+    season_confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence in season estimate (0.0-1.0)")
+    event_confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence in event hint (0.0-1.0)")
+    alternative_decades: list[str] | None = Field(None, description="Alternative decade possibilities when uncertain")
+    uncertainty_flag: bool | None = Field(None, description="Flag indicating high uncertainty in analysis")
+    hypothesis_notes: str | None = Field(None, description="Explanation when multiple hypotheses exist")
 
     @field_validator("decade")
     @classmethod
-    def validate_decade_format(cls, v: Optional[str]) -> Optional[str]:
+    def validate_decade_format(cls, v: str | None) -> str | None:
         """Validate decade format matches pattern like '1985-1990'."""
         if v is None:
             return v
@@ -90,27 +72,17 @@ class ContextAnalysisResult(BaseModel):
         # Check format: YYYY-YYYY where both are 4-digit years
         pattern = r"^\d{4}-\d{4}$"
         if not re.match(pattern, v):
-            raise ValueError(
-                f"Invalid decade format: '{v}'. Expected format: 'YYYY-YYYY' (e.g., '1985-1990')"
-            )
+            raise ValueError(f"Invalid decade format: '{v}'. Expected format: 'YYYY-YYYY' (e.g., '1985-1990')")
 
         # Validate year ranges
         try:
             start_year, end_year = map(int, v.split("-"))
             if start_year >= end_year:
-                raise ValueError(
-                    f"Invalid decade range: '{v}'. Start year must be less than end year"
-                )
+                raise ValueError(f"Invalid decade range: '{v}'. Start year must be less than end year")
             if end_year - start_year > 20:  # Allow some flexibility but not too much
-                raise ValueError(
-                    f"Invalid decade range: '{v}'. Range should be reasonable (max 20 years)"
-                )
-            if (
-                start_year < 1800 or end_year > 2100
-            ):  # Reasonable bounds for photography
-                raise ValueError(
-                    f"Invalid decade range: '{v}'. Years should be between 1800-2100"
-                )
+                raise ValueError(f"Invalid decade range: '{v}'. Range should be reasonable (max 20 years)")
+            if start_year < 1800 or end_year > 2100:  # Reasonable bounds for photography
+                raise ValueError(f"Invalid decade range: '{v}'. Years should be between 1800-2100")
         except ValueError as e:
             if "invalid literal" in str(e):
                 raise ValueError(f"Invalid decade format: '{v}'. Years must be numeric")
@@ -120,9 +92,7 @@ class ContextAnalysisResult(BaseModel):
 
     @field_validator("alternative_decades")
     @classmethod
-    def validate_alternative_decades(
-        cls, v: Optional[List[str]], info
-    ) -> Optional[List[str]]:
+    def validate_alternative_decades(cls, v: list[str] | None, info) -> list[str] | None:
         """Validate alternative decades format."""
         if v is None:
             return v
@@ -136,9 +106,7 @@ class ContextAnalysisResult(BaseModel):
                 # Check format
                 pattern = r"^\d{4}-\d{4}$"
                 if not re.match(pattern, decade):
-                    raise ValueError(
-                        f"Invalid alternative decade format: '{decade}'. Expected format: 'YYYY-YYYY'"
-                    )
+                    raise ValueError(f"Invalid alternative decade format: '{decade}'. Expected format: 'YYYY-YYYY'")
 
                 # Validate year ranges
                 start_year, end_year = map(int, decade.split("-"))
@@ -151,9 +119,7 @@ class ContextAnalysisResult(BaseModel):
                         f"Invalid alternative decade range: '{decade}'. Range should be reasonable (max 20 years)"
                     )
                 if start_year < 1800 or end_year > 2100:
-                    raise ValueError(
-                        f"Invalid alternative decade range: '{decade}'. Years should be between 1800-2100"
-                    )
+                    raise ValueError(f"Invalid alternative decade range: '{decade}'. Years should be between 1800-2100")
 
                 validated_decades.append(decade)
             except ValueError as e:
@@ -164,26 +130,20 @@ class ContextAnalysisResult(BaseModel):
 
     @field_validator("season_confidence")
     @classmethod
-    def validate_season_confidence(cls, v: Optional[float], info) -> Optional[float]:
+    def validate_season_confidence(cls, v: float | None, info) -> float | None:
         """Validate season confidence is provided when season is set."""
         if info.data.get("season") is not None and v is None:
-            logger.warning(
-                "Season is set but season_confidence is None. Consider providing confidence score."
-            )
+            logger.warning("Season is set but season_confidence is None. Consider providing confidence score.")
         elif info.data.get("season") is None and v is not None:
-            logger.warning(
-                "season_confidence is set but season is None. Confidence without season may be ignored."
-            )
+            logger.warning("season_confidence is set but season is None. Confidence without season may be ignored.")
         return v
 
     @field_validator("event_confidence")
     @classmethod
-    def validate_event_confidence(cls, v: Optional[float], info) -> Optional[float]:
+    def validate_event_confidence(cls, v: float | None, info) -> float | None:
         """Validate event confidence is provided when event_hint is set."""
         if info.data.get("event_hint") is not None and v is None:
-            logger.warning(
-                "event_hint is set but event_confidence is None. Consider providing confidence score."
-            )
+            logger.warning("event_hint is set but event_confidence is None. Consider providing confidence score.")
         elif info.data.get("event_hint") is None and v is not None:
             logger.warning(
                 "event_confidence is set but event_hint is None. Confidence without event hint may be ignored."
@@ -192,18 +152,18 @@ class ContextAnalysisResult(BaseModel):
 
     @field_validator("photo_medium_confidence")
     @classmethod
-    def validate_photo_medium_confidence(
-        cls, v: Optional[float], info
-    ) -> Optional[float]:
+    def validate_photo_medium_confidence(cls, v: float | None, info) -> float | None:
         """Validate photo medium confidence is provided when photo_medium is not 'unknown'."""
         photo_medium = info.data.get("photo_medium", "digital")
         if photo_medium != "unknown" and v is None:
             logger.warning(
-                f"photo_medium is '{photo_medium}' but photo_medium_confidence is None. Consider providing confidence score."
+                f"photo_medium is '{photo_medium}' but photo_medium_confidence is None. "
+                "Consider providing confidence score."
             )
         elif photo_medium == "unknown" and v is not None:
             logger.warning(
-                "photo_medium_confidence is set but photo_medium is 'unknown'. Confidence for 'unknown' medium may be ignored."
+                "photo_medium_confidence is set but photo_medium is 'unknown'. "
+                "Confidence for 'unknown' medium may be ignored."
             )
         return v
 
@@ -214,7 +174,9 @@ class ContextAnalysisResult(BaseModel):
         if self.season is not None:
             if self.season_confidence is None or self.season_confidence < 0.3:
                 logger.debug(
-                    f"Clearing season '{self.season}' due to {'missing' if self.season_confidence is None else 'low'} confidence: {self.season_confidence}"
+                    f"Clearing season '{self.season}' due to "
+                    f"{'missing' if self.season_confidence is None else 'low'} "
+                    f"confidence: {self.season_confidence}"
                 )
                 self.season = None
                 self.season_confidence = None
@@ -223,19 +185,20 @@ class ContextAnalysisResult(BaseModel):
         if self.event_hint is not None:
             if self.event_confidence is None or self.event_confidence < 0.3:
                 logger.debug(
-                    f"Clearing event_hint '{self.event_hint}' due to {'missing' if self.event_confidence is None else 'low'} confidence: {self.event_confidence}"
+                    f"Clearing event_hint '{self.event_hint}' due to "
+                    f"{'missing' if self.event_confidence is None else 'low'} "
+                    f"confidence: {self.event_confidence}"
                 )
                 self.event_hint = None
                 self.event_confidence = None
 
         # Set photo_medium to "unknown" if confidence is too low or None
         if self.photo_medium != "unknown":
-            if (
-                self.photo_medium_confidence is None
-                or self.photo_medium_confidence < 0.3
-            ):
+            if self.photo_medium_confidence is None or self.photo_medium_confidence < 0.3:
                 logger.debug(
-                    f"Setting photo_medium to 'unknown' due to {'missing' if self.photo_medium_confidence is None else 'low'} confidence: {self.photo_medium_confidence}"
+                    f"Setting photo_medium to 'unknown' due to "
+                    f"{'missing' if self.photo_medium_confidence is None else 'low'} "
+                    f"confidence: {self.photo_medium_confidence}"
                 )
                 self.photo_medium = "unknown"
                 self.photo_medium_confidence = None
@@ -245,27 +208,17 @@ class ContextAnalysisResult(BaseModel):
             self.uncertainty_flag = True
             # If decade confidence is very low, consider clearing decade
             if self.decade_confidence < 0.2 and self.decade is not None:
-                logger.debug(
-                    f"Clearing decade '{self.decade}' due to very low confidence: {self.decade_confidence}"
-                )
+                logger.debug(f"Clearing decade '{self.decade}' due to very low confidence: {self.decade_confidence}")
                 self.decade = None
                 self.alternative_decades = None
 
         # Ensure visual_evidence is a list if not None
-        if self.visual_evidence is not None and not isinstance(
-            self.visual_evidence, list
-        ):
-            self.visual_evidence = (
-                [self.visual_evidence] if self.visual_evidence else None
-            )
+        if self.visual_evidence is not None and not isinstance(self.visual_evidence, list):
+            self.visual_evidence = [self.visual_evidence] if self.visual_evidence else None
 
         # Ensure alternative_decades is a list if not None
-        if self.alternative_decades is not None and not isinstance(
-            self.alternative_decades, list
-        ):
-            self.alternative_decades = (
-                [self.alternative_decades] if self.alternative_decades else None
-            )
+        if self.alternative_decades is not None and not isinstance(self.alternative_decades, list):
+            self.alternative_decades = [self.alternative_decades] if self.alternative_decades else None
 
         return self
 
@@ -286,39 +239,29 @@ class OllamaConfig:
 class OllamaClient:
     """Client for interacting with Ollama server."""
 
-    def __init__(self, config: Optional[OllamaConfig] = None):
+    def __init__(self, config: OllamaConfig | None = None):
         self.config = config or OllamaConfig()
         self._client = None
-        self._available_models: List[str] = []
+        self._available_models: list[str] = []
 
     def connect(self) -> bool:
         """Connect to Ollama server and check availability."""
         try:
             # Test connection by listing models
             response = ollama.list()
-            self._available_models = [
-                model["name"] for model in response.get("models", [])
-            ]
+            self._available_models = [model["name"] for model in response.get("models", [])]
 
             logger.info(f"Connected to Ollama at {self.config.host}")
             logger.info(f"Available models: {self._available_models}")
 
             # Check if required models are available
-            primary_available = (
-                self.config.primary_model.value in self._available_models
-            )
-            fallback_available = (
-                self.config.fallback_model.value in self._available_models
-            )
+            primary_available = self.config.primary_model.value in self._available_models
+            fallback_available = self.config.fallback_model.value in self._available_models
 
             if not primary_available:
-                logger.warning(
-                    f"Primary model {self.config.primary_model.value} not found"
-                )
+                logger.warning(f"Primary model {self.config.primary_model.value} not found")
             if not fallback_available:
-                logger.warning(
-                    f"Fallback model {self.config.fallback_model.value} not found"
-                )
+                logger.warning(f"Fallback model {self.config.fallback_model.value} not found")
 
             return primary_available or fallback_available
 
@@ -326,7 +269,7 @@ class OllamaClient:
             logger.error(f"Failed to connect to Ollama at {self.config.host}: {e}")
             return False
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         Perform a health check on the Ollama server.
 
@@ -340,25 +283,17 @@ class OllamaClient:
             health_status = {
                 "status": "healthy",
                 "server_available": True,
-                "primary_model_available": self.is_model_available(
-                    self.config.primary_model.value
-                ),
-                "fallback_model_available": self.is_model_available(
-                    self.config.fallback_model.value
-                ),
+                "primary_model_available": self.is_model_available(self.config.primary_model.value),
+                "fallback_model_available": self.is_model_available(self.config.fallback_model.value),
                 "available_models": self._available_models,
                 "model_details": {
                     "primary": {
                         "name": self.config.primary_model.value,
-                        "available": self.is_model_available(
-                            self.config.primary_model.value
-                        ),
+                        "available": self.is_model_available(self.config.primary_model.value),
                     },
                     "fallback": {
                         "name": self.config.fallback_model.value,
-                        "available": self.is_model_available(
-                            self.config.fallback_model.value
-                        ),
+                        "available": self.is_model_available(self.config.fallback_model.value),
                     },
                 },
             }
@@ -368,9 +303,7 @@ class OllamaClient:
                 health_status["model_info"] = {
                     "size": info.get("size", "unknown"),
                     "modified_at": info.get("modified_at", "unknown"),
-                    "digest": info.get("digest", "unknown")[:16] + "..."
-                    if info.get("digest")
-                    else "unknown",
+                    "digest": info.get("digest", "unknown")[:16] + "..." if info.get("digest") else "unknown",
                 }
 
             return health_status
@@ -429,9 +362,7 @@ class OllamaClient:
 
             # Check length before processing to prevent memory issues
             if len(data) > MAX_BASE64_SIZE:
-                logger.debug(
-                    f"Base64 string too large: {len(data)} chars > {MAX_BASE64_SIZE} max"
-                )
+                logger.debug(f"Base64 string too large: {len(data)} chars > {MAX_BASE64_SIZE} max")
                 return False
 
             # Check for valid base64 characters (A-Z, a-z, 0-9, +, /, =, -, _)
@@ -476,9 +407,7 @@ class OllamaClient:
         """
         # If already base64 encoded and not forcing re-encoding
         if not use_base64 and self._is_base64_encoded(image_input):
-            logger.debug(
-                f"Input is already base64 encoded (length: {len(image_input)} chars)"
-            )
+            logger.debug(f"Input is already base64 encoded (length: {len(image_input)} chars)")
             return image_input
 
         # If it's a file path
@@ -487,15 +416,13 @@ class OllamaClient:
             try:
                 # Check if file is readable
                 if not os.access(image_input, os.R_OK):
-                    raise IOError(f"File {image_input} is not readable")
+                    raise OSError(f"File {image_input} is not readable")
 
                 # Check file size before reading (best effort)
                 file_size = os.path.getsize(image_input)
                 if file_size == 0:
                     raise ValueError(f"File {image_input} is empty")
-                if (
-                    file_size > MAX_FILE_SIZE * 10
-                ):  # Allow some buffer for base64 overhead check
+                if file_size > MAX_FILE_SIZE * 10:  # Allow some buffer for base64 overhead check
                     raise ValueError(
                         f"File {image_input} is too large ({file_size} bytes > {MAX_FILE_SIZE * 10} bytes max)"
                     )
@@ -526,12 +453,10 @@ class OllamaClient:
                             f"Consider using file path instead of base64 encoding for large files."
                         )
 
-                    logger.debug(
-                        f"Encoding file {image_input} ({file_size} bytes) as base64"
-                    )
+                    logger.debug(f"Encoding file {image_input} ({file_size} bytes) as base64")
                     return base64.b64encode(image_data).decode("utf-8")
-                except IOError as e:
-                    raise IOError(f"Cannot read image file {image_input}: {e}")
+                except OSError as e:
+                    raise OSError(f"Cannot read image file {image_input}: {e}")
             else:
                 # Return file path as-is
                 logger.debug(f"Using file path directly: {image_input}")
@@ -539,9 +464,7 @@ class OllamaClient:
 
         # Check if it's base64 encoded when use_base64=True
         if use_base64 and self._is_base64_encoded(image_input):
-            logger.debug(
-                f"Input is already base64 encoded (length: {len(image_input)} chars), using as-is"
-            )
+            logger.debug(f"Input is already base64 encoded (length: {len(image_input)} chars), using as-is")
             return image_input
 
         # Check if it might be base64 but validation failed
@@ -549,29 +472,24 @@ class OllamaClient:
             # Try to provide more helpful error message
             if self._is_base64_encoded(image_input):
                 # This shouldn't happen, but just in case
-                raise ValueError(
-                    f"Input validation inconsistent: detected as base64 but failed to process"
-                )
+                raise ValueError("Input validation inconsistent: detected as base64 but failed to process")
             else:
                 # Safely get first 100 chars or less
                 preview = image_input[:100] if len(image_input) > 100 else image_input
                 raise ValueError(
-                    f"Input is not valid base64 when use_base64=True. "
-                    f"First {len(preview)} chars: {preview}..."
+                    f"Input is not valid base64 when use_base64=True. First {len(preview)} chars: {preview}..."
                 )
 
         # Not a file and not base64
-        raise ValueError(
-            f"Invalid image input: {image_input}. Must be a valid file path or base64 encoded string."
-        )
+        raise ValueError(f"Invalid image input: {image_input}. Must be a valid file path or base64 encoded string.")
 
     def analyze_image_context(
         self,
         image_input: str,
-        model_name: Optional[str] = None,
-        prompt_template: Optional[str] = None,
+        model_name: str | None = None,
+        prompt_template: str | None = None,
         use_base64: bool = False,
-    ) -> Optional[ContextAnalysisResult]:
+    ) -> ContextAnalysisResult | None:
         """
         Analyze image context using vision LLM.
 
@@ -597,16 +515,14 @@ class OllamaClient:
         # Prepare image input (file path or base64)
         try:
             prepared_image = self._prepare_image_input(image_input, use_base64)
-        except (ValueError, IOError) as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Failed to prepare image input: {e}")
             return None
 
         prompt = prompt_template or self._get_default_prompt()
 
         # Create log message for image info
-        log_image_info = (
-            f"image (base64: {use_base64})" if use_base64 else f"image {image_input}"
-        )
+        log_image_info = f"image (base64: {use_base64})" if use_base64 else f"image {image_input}"
 
         # Simple circuit breaker state
         consecutive_timeouts = 0
@@ -614,9 +530,7 @@ class OllamaClient:
 
         for attempt in range(self.config.max_retries):
             try:
-                logger.debug(
-                    f"Analyzing {log_image_info} with model {model_name} (attempt {attempt + 1})"
-                )
+                logger.debug(f"Analyzing {log_image_info} with model {model_name} (attempt {attempt + 1})")
 
                 response = ollama.generate(
                     model=model_name,
@@ -639,9 +553,7 @@ class OllamaClient:
                     consecutive_timeouts = 0
                     return result
 
-                logger.warning(
-                    f"Failed to parse JSON from LLM response on attempt {attempt + 1}"
-                )
+                logger.warning(f"Failed to parse JSON from LLM response on attempt {attempt + 1}")
 
             except (
                 TimeoutError,
@@ -652,9 +564,7 @@ class OllamaClient:
                 # Network/timeout specific error handling
                 # OSError catches socket.timeout and other OS-level errors
                 consecutive_timeouts += 1
-                logger.warning(
-                    f"Network/timeout error analyzing image on attempt {attempt + 1}: {e}"
-                )
+                logger.warning(f"Network/timeout error analyzing image on attempt {attempt + 1}: {e}")
 
                 # Check circuit breaker
                 if consecutive_timeouts >= max_consecutive_timeouts:
@@ -671,27 +581,18 @@ class OllamaClient:
                 consecutive_timeouts = 0
 
             # Exponential backoff for retries with jitter
-            if (
-                attempt < self.config.max_retries - 1
-                and consecutive_timeouts < max_consecutive_timeouts
-            ):
+            if attempt < self.config.max_retries - 1 and consecutive_timeouts < max_consecutive_timeouts:
                 base_delay = self.config.retry_delay * (2**attempt)
 
                 # Add jitter: ±jitter_percentage random variation
                 jitter_range = base_delay * self.config.jitter_percentage
                 jitter = random.uniform(-jitter_range, jitter_range)
-                delay = max(
-                    0.1, base_delay + jitter
-                )  # Ensure minimum delay of 0.1 seconds
+                delay = max(0.1, base_delay + jitter)  # Ensure minimum delay of 0.1 seconds
 
-                logger.debug(
-                    f"Retrying in {delay:.2f} seconds (base: {base_delay:.2f}, jitter: {jitter:+.2f})..."
-                )
+                logger.debug(f"Retrying in {delay:.2f} seconds (base: {base_delay:.2f}, jitter: {jitter:+.2f})...")
                 time.sleep(delay)
 
-        logger.error(
-            f"Failed to analyze {log_image_info} after {self.config.max_retries} attempts"
-        )
+        logger.error(f"Failed to analyze {log_image_info} after {self.config.max_retries} attempts")
         return None
 
     def _get_default_prompt(self) -> str:
@@ -912,7 +813,7 @@ Example with multiple hypotheses:
 
         return templates.get(template_name, templates["default"])
 
-    def get_available_prompts(self) -> List[str]:
+    def get_available_prompts(self) -> list[str]:
         """Get list of available prompt template names."""
         return [
             "default",
@@ -946,17 +847,13 @@ Example with multiple hypotheses:
         # Check if we got the default template (which means the requested template wasn't found)
         default_template = self._get_prompt_template("default")
         if template == default_template and template_name != "default":
-            logger.warning(
-                f"Prompt template '{template_name}' not found, using default template"
-            )
+            logger.warning(f"Prompt template '{template_name}' not found, using default template")
         else:
             logger.debug(f"Using prompt template: {template_name}")
 
         return template
 
-    def _parse_llm_response(
-        self, response_text: str
-    ) -> Optional[ContextAnalysisResult]:
+    def _parse_llm_response(self, response_text: str) -> ContextAnalysisResult | None:
         """Parse LLM response into structured result with enhanced error handling."""
         if not response_text or not response_text.strip():
             logger.warning("Empty LLM response received")
@@ -977,13 +874,8 @@ Example with multiple hypotheses:
                     data = json.loads(json_str)
                 except json.JSONDecodeError as e:
                     # Provide more helpful error message
-                    error_context = json_str[
-                        max(0, e.pos - 50) : min(len(json_str), e.pos + 50)
-                    ]
-                    logger.warning(
-                        f"JSON decode error at position {e.pos}: {e.msg}. "
-                        f"Context: ...{error_context}..."
-                    )
+                    error_context = json_str[max(0, e.pos - 50) : min(len(json_str), e.pos + 50)]
+                    logger.warning(f"JSON decode error at position {e.pos}: {e.msg}. Context: ...{error_context}...")
 
                     # Try to fix common JSON issues
                     fixed_json = self._attempt_json_fix(json_str)
@@ -999,7 +891,7 @@ Example with multiple hypotheses:
                 # Validate with Pydantic model
                 try:
                     result = ContextAnalysisResult(**data)
-                    logger.debug(f"Successfully parsed and validated LLM response")
+                    logger.debug("Successfully parsed and validated LLM response")
                     return result
                 except ValidationError as e:
                     # Log detailed validation errors
@@ -1010,24 +902,19 @@ Example with multiple hypotheses:
                         error_type = error.get("type", "validation")
                         error_details.append(f"{field}: {msg} ({error_type})")
 
-                    logger.warning(
-                        f"Validation failed for LLM response: {', '.join(error_details)}. "
-                        f"Raw data: {data}"
-                    )
+                    logger.warning(f"Validation failed for LLM response: {', '.join(error_details)}. Raw data: {data}")
 
                     # Try to create a fallback result with cleaned data
                     return self._create_fallback_result(data)
             else:
-                logger.warning(
-                    f"No JSON found in response. First 200 chars: {response_text[:200]}..."
-                )
+                logger.warning(f"No JSON found in response. First 200 chars: {response_text[:200]}...")
                 return None
 
         except Exception as e:
             logger.error(f"Unexpected error parsing LLM response: {e}")
             return None
 
-    def _attempt_json_fix(self, json_str: str) -> Optional[str]:
+    def _attempt_json_fix(self, json_str: str) -> str | None:
         """Attempt to fix common JSON issues in LLM responses."""
         if not json_str:
             return None
@@ -1141,9 +1028,7 @@ Example with multiple hypotheses:
 
         return "".join(result)
 
-    def _create_fallback_result(
-        self, data: Dict[str, Any]
-    ) -> Optional[ContextAnalysisResult]:
+    def _create_fallback_result(self, data: dict[str, Any]) -> ContextAnalysisResult | None:
         """Create a fallback result when validation fails."""
         try:
             # Clean the data before creating fallback
@@ -1167,9 +1052,7 @@ Example with multiple hypotheses:
                 if math.isnan(confidence_value):
                     pass  # Skip NaN values
                 else:
-                    cleaned_data["decade_confidence"] = max(
-                        0.0, min(1.0, confidence_value)
-                    )
+                    cleaned_data["decade_confidence"] = max(0.0, min(1.0, confidence_value))
             elif isinstance(decade_confidence, str):
                 try:
                     confidence_value = float(decade_confidence)
@@ -1177,9 +1060,7 @@ Example with multiple hypotheses:
                     if math.isnan(confidence_value):
                         pass  # Skip NaN values
                     else:
-                        cleaned_data["decade_confidence"] = max(
-                            0.0, min(1.0, confidence_value)
-                        )
+                        cleaned_data["decade_confidence"] = max(0.0, min(1.0, confidence_value))
                 except (ValueError, TypeError):
                     pass  # Skip invalid string values
 
@@ -1196,9 +1077,7 @@ Example with multiple hypotheses:
                 if math.isnan(confidence_value):
                     pass  # Skip NaN values
                 else:
-                    cleaned_data["season_confidence"] = max(
-                        0.0, min(1.0, confidence_value)
-                    )
+                    cleaned_data["season_confidence"] = max(0.0, min(1.0, confidence_value))
             elif isinstance(season_confidence, str):
                 try:
                     confidence_value = float(season_confidence)
@@ -1206,9 +1085,7 @@ Example with multiple hypotheses:
                     if math.isnan(confidence_value):
                         pass  # Skip NaN values
                     else:
-                        cleaned_data["season_confidence"] = max(
-                            0.0, min(1.0, confidence_value)
-                        )
+                        cleaned_data["season_confidence"] = max(0.0, min(1.0, confidence_value))
                 except (ValueError, TypeError):
                     pass  # Skip invalid string values
 
@@ -1225,9 +1102,7 @@ Example with multiple hypotheses:
                 if math.isnan(confidence_value):
                     pass  # Skip NaN values
                 else:
-                    cleaned_data["event_confidence"] = max(
-                        0.0, min(1.0, confidence_value)
-                    )
+                    cleaned_data["event_confidence"] = max(0.0, min(1.0, confidence_value))
             elif isinstance(event_confidence, str):
                 try:
                     confidence_value = float(event_confidence)
@@ -1235,9 +1110,7 @@ Example with multiple hypotheses:
                     if math.isnan(confidence_value):
                         pass  # Skip NaN values
                     else:
-                        cleaned_data["event_confidence"] = max(
-                            0.0, min(1.0, confidence_value)
-                        )
+                        cleaned_data["event_confidence"] = max(0.0, min(1.0, confidence_value))
                 except (ValueError, TypeError):
                     pass  # Skip invalid string values
 
@@ -1260,9 +1133,7 @@ Example with multiple hypotheses:
                 if math.isnan(confidence_value):
                     pass  # Skip NaN values
                 else:
-                    cleaned_data["photo_medium_confidence"] = max(
-                        0.0, min(1.0, confidence_value)
-                    )
+                    cleaned_data["photo_medium_confidence"] = max(0.0, min(1.0, confidence_value))
             elif isinstance(photo_medium_confidence, str):
                 try:
                     confidence_value = float(photo_medium_confidence)
@@ -1270,9 +1141,7 @@ Example with multiple hypotheses:
                     if math.isnan(confidence_value):
                         pass  # Skip NaN values
                     else:
-                        cleaned_data["photo_medium_confidence"] = max(
-                            0.0, min(1.0, confidence_value)
-                        )
+                        cleaned_data["photo_medium_confidence"] = max(0.0, min(1.0, confidence_value))
                 except (ValueError, TypeError):
                     pass  # Skip invalid string values
 
@@ -1280,9 +1149,7 @@ Example with multiple hypotheses:
             visual_evidence = data.get("visual_evidence")
             if visual_evidence:
                 if isinstance(visual_evidence, list):
-                    cleaned_data["visual_evidence"] = [
-                        str(item) for item in visual_evidence if item
-                    ]
+                    cleaned_data["visual_evidence"] = [str(item) for item in visual_evidence if item]
                 elif isinstance(visual_evidence, str):
                     cleaned_data["visual_evidence"] = [visual_evidence]
 
@@ -1292,11 +1159,7 @@ Example with multiple hypotheses:
                 if isinstance(alternative_decades, list):
                     valid_decades = []
                     for decade in alternative_decades:
-                        if (
-                            decade
-                            and isinstance(decade, str)
-                            and re.match(r"^\d{4}-\d{4}$", decade)
-                        ):
+                        if decade and isinstance(decade, str) and re.match(r"^\d{4}-\d{4}$", decade):
                             valid_decades.append(decade)
                     if valid_decades:
                         cleaned_data["alternative_decades"] = valid_decades
@@ -1313,9 +1176,7 @@ Example with multiple hypotheses:
 
             # Create fallback result with cleaned data
             if cleaned_data:
-                logger.info(
-                    f"Created fallback result from cleaned data: {cleaned_data}"
-                )
+                logger.info(f"Created fallback result from cleaned data: {cleaned_data}")
                 return ContextAnalysisResult(**cleaned_data)
             else:
                 logger.warning("No valid data found for fallback result")
@@ -1325,16 +1186,16 @@ Example with multiple hypotheses:
             logger.error(f"Failed to create fallback result: {e}")
             return None
 
-    def get_available_models(self) -> List[str]:
+    def get_available_models(self) -> list[str]:
         """Get list of available models."""
         return self._available_models.copy()
 
 
 # Default client instance
-_default_client: Optional[OllamaClient] = None
+_default_client: OllamaClient | None = None
 
 
-def get_ollama_client(config: Optional[OllamaConfig] = None) -> OllamaClient:
+def get_ollama_client(config: OllamaConfig | None = None) -> OllamaClient:
     """Get or create default Ollama client."""
     global _default_client
     if _default_client is None:

@@ -6,24 +6,25 @@ of photos for decade estimation, season detection, event hints, and photo medium
 identification using the OllamaClient.
 """
 
-import time
 import random
 import re
-from typing import Optional, Dict, Any, List, Literal, Callable, TypeVar
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
+from typing import Any, TypeVar
 
 from loguru import logger
 
-T = TypeVar("T")
-
 from photochron.models.ollama_client import (
-    OllamaClient,
-    OllamaConfig,
     ContextAnalysisResult,
     ModelType,
+    OllamaClient,
+    OllamaConfig,
 )
+
+T = TypeVar("T")
 
 # Import ollama exceptions for better error handling
 try:
@@ -41,7 +42,7 @@ except ImportError:
     HAS_OLLAMA_EXCEPTIONS = False
 
 
-class AnalysisStrategy(str, Enum):
+class AnalysisStrategy(StrEnum):
     """Strategy for context analysis."""
 
     DEFAULT = "default"
@@ -57,7 +58,7 @@ class AnalysisStrategy(str, Enum):
     """Use simpler prompts and skip retries for speed."""
 
 
-class FallbackStrategy(str, Enum):
+class FallbackStrategy(StrEnum):
     """Strategy for handling analysis failures."""
 
     NONE = "none"
@@ -101,7 +102,7 @@ class ContextAnalyzerConfig:
     use_base64: bool = False
     """Whether to encode images as base64 for Ollama."""
 
-    prompt_templates: List[str] = field(
+    prompt_templates: list[str] = field(
         default_factory=lambda: [
             "default",
             "detailed_decade",
@@ -111,7 +112,7 @@ class ContextAnalyzerConfig:
     )
     """Ordered list of prompt templates to try."""
 
-    model_priority: List[ModelType] = field(
+    model_priority: list[ModelType] = field(
         default_factory=lambda: [
             ModelType.LLAVA_NEXT_7B,
             ModelType.MOONDREAM2,
@@ -136,9 +137,9 @@ class ContextAnalyzer:
 
     def __init__(
         self,
-        ollama_client: Optional[OllamaClient] = None,
-        config: Optional[ContextAnalyzerConfig] = None,
-        ollama_config: Optional[OllamaConfig] = None,
+        ollama_client: OllamaClient | None = None,
+        config: ContextAnalyzerConfig | None = None,
+        ollama_config: OllamaConfig | None = None,
     ) -> None:
         """
         Initialize the context analyzer.
@@ -220,9 +221,11 @@ class ContextAnalyzer:
             # Specific patterns first
             r"model ['\"]([^'\"]+)['\"]",  # Model name in quotes: model "llava-next:7b" not found
             r"pull model ([^ ]+) first",  # Model name after "pull model": pull model llava-next:7b first
-            r"model (?:does not exist|not found|unavailable)[ :]+([^ ,]+)",  # Handle "model does not exist: llava-next:7b"
+            # Handle "model does not exist: llava-next:7b"
+            r"model (?:does not exist|not found|unavailable)[ :]+([^ ,]+)",
             r"model: ([^ ,]+)",  # Model name after "model:" (with colon): model: llava-next:7b
-            r"model ([^ ]+) is not available",  # Model name before "is not available": model llava-next:7b is not available
+            # Model name before "is not available": model llava-next:7b is not available
+            r"model ([^ ]+) is not available",
             # More general patterns (careful with these)
             r"model ([^ ]+) not found",  # Model name without quotes after "model": model llava-next:7b not found
             r"model ([a-zA-Z0-9][^ ]*[:/][^ ]*)",  # Model name containing : or / (like llava-next:7b)
@@ -243,12 +246,7 @@ class ContextAnalyzer:
             if word == "model" and i + 1 < len(words):
                 next_word = words[i + 1]
                 # Check if it looks like a model name
-                if (
-                    ":" in next_word
-                    or "/" in next_word
-                    or "llava" in next_word
-                    or "moondream" in next_word
-                ):
+                if ":" in next_word or "/" in next_word or "llava" in next_word or "moondream" in next_word:
                     return next_word.strip("'\"")
 
         return "unknown"
@@ -312,15 +310,9 @@ class ContextAnalyzer:
             else:
                 # Other ollama-specific error
                 log_level = "error" if is_final else "warning"
-                log_message = (
-                    f"{operation_name} failed on attempt {attempt_display}: "
-                    f"Ollama error: {exception}"
-                )
+                log_message = f"{operation_name} failed on attempt {attempt_display}: Ollama error: {exception}"
                 if is_final:
-                    log_message = (
-                        f"{operation_name} failed after {attempt_display} attempts: "
-                        f"Ollama error: {exception}"
-                    )
+                    log_message = f"{operation_name} failed after {attempt_display} attempts: Ollama error: {exception}"
                 getattr(logger, log_level)(log_message)
 
         elif is_model_not_found:
@@ -343,16 +335,12 @@ class ContextAnalyzer:
         else:
             # Generic error
             log_level = "error" if is_final else "warning"
-            log_message = (
-                f"{operation_name} failed on attempt {attempt_display}: {exception}"
-            )
+            log_message = f"{operation_name} failed on attempt {attempt_display}: {exception}"
             if is_final:
                 log_message = f"{operation_name} failed after {attempt_display} attempts: {exception}"
             getattr(logger, log_level)(log_message)
 
-    def _with_retry(
-        self, operation: Callable[[], Optional[T]], operation_name: str
-    ) -> Optional[T]:
+    def _with_retry(self, operation: Callable[[], T | None], operation_name: str) -> T | None:
         """
         Execute an operation with retry logic based on analyzer configuration.
 
@@ -368,9 +356,7 @@ class ContextAnalyzer:
             try:
                 return operation()
             except Exception as e:
-                self._handle_operation_exception(
-                    e, operation_name, attempt=0, is_final=True
-                )
+                self._handle_operation_exception(e, operation_name, attempt=0, is_final=True)
                 return None
 
         last_exception = None
@@ -379,15 +365,11 @@ class ContextAnalyzer:
                 result = operation()
                 if result is not None:
                     if attempt > 0:
-                        logger.info(
-                            f"{operation_name} succeeded on attempt {attempt + 1}"
-                        )
+                        logger.info(f"{operation_name} succeeded on attempt {attempt + 1}")
                     return result
                 else:
                     # Operation returned None (not an exception)
-                    logger.debug(
-                        f"{operation_name} returned None on attempt {attempt + 1}"
-                    )
+                    logger.debug(f"{operation_name} returned None on attempt {attempt + 1}")
 
             except Exception as e:
                 # Handle all exceptions with the helper method
@@ -410,18 +392,16 @@ class ContextAnalyzer:
             # Final error already logged by _handle_operation_exception with is_final=True
             pass
         else:
-            logger.error(
-                f"{operation_name} returned None after {self.config.max_retries + 1} attempts"
-            )
+            logger.error(f"{operation_name} returned None after {self.config.max_retries + 1} attempts")
 
         return None
 
     def analyze(
         self,
         image_path: str,
-        strategy: Optional[AnalysisStrategy] = None,
-        fallback_strategy: Optional[FallbackStrategy] = None,
-    ) -> Optional[ContextAnalysisResult]:
+        strategy: AnalysisStrategy | None = None,
+        fallback_strategy: FallbackStrategy | None = None,
+    ) -> ContextAnalysisResult | None:
         """
         Analyze a photo for context information.
 
@@ -477,7 +457,7 @@ class ContextAnalyzer:
 
         return result
 
-    def _analyze_default(self, image_path: str) -> Optional[ContextAnalysisResult]:
+    def _analyze_default(self, image_path: str) -> ContextAnalysisResult | None:
         """
         Default analysis strategy.
 
@@ -504,10 +484,7 @@ class ContextAnalyzer:
         )
 
         # If result is None or has very low confidence, try fallback model
-        if (
-            result is None
-            or result.decade_confidence < self.config.min_decade_confidence
-        ):
+        if result is None or result.decade_confidence < self.config.min_decade_confidence:
             fallback_model = self._get_fallback_model_name()
             if fallback_model:
                 logger.debug("Trying fallback model due to low confidence")
@@ -515,9 +492,7 @@ class ContextAnalyzer:
                     lambda: self.ollama_client.analyze_image_context(
                         image_input=image_path,
                         model_name=fallback_model,
-                        prompt_template=self.ollama_client.get_prompt_template(
-                            "default"
-                        ),
+                        prompt_template=self.ollama_client.get_prompt_template("default"),
                         use_base64=self.config.use_base64,
                     ),
                     "Fallback model analysis",
@@ -525,7 +500,7 @@ class ContextAnalyzer:
 
         return result
 
-    def _get_primary_model_name(self) -> Optional[str]:
+    def _get_primary_model_name(self) -> str | None:
         """
         Safely get the primary model name from model_priority list.
 
@@ -537,7 +512,7 @@ class ContextAnalyzer:
             return None
         return self.config.model_priority[0].value
 
-    def _get_fallback_model_name(self) -> Optional[str]:
+    def _get_fallback_model_name(self) -> str | None:
         """
         Safely get the fallback model name from model_priority list.
 
@@ -549,7 +524,7 @@ class ContextAnalyzer:
             return None
         return self.config.model_priority[1].value
 
-    def _analyze_aggressive(self, image_path: str) -> Optional[ContextAnalysisResult]:
+    def _analyze_aggressive(self, image_path: str) -> ContextAnalysisResult | None:
         """
         Aggressive analysis strategy.
 
@@ -569,9 +544,7 @@ class ContextAnalyzer:
                     lambda: self.ollama_client.analyze_image_context(
                         image_input=image_path,
                         model_name=model.value,
-                        prompt_template=self.ollama_client.get_prompt_template(
-                            prompt_name
-                        ),
+                        prompt_template=self.ollama_client.get_prompt_template(prompt_name),
                         use_base64=self.config.use_base64,
                     ),
                     f"Model {model.value} with prompt {prompt_name} analysis",
@@ -584,9 +557,7 @@ class ContextAnalyzer:
                     if overall_confidence > best_confidence:
                         best_confidence = overall_confidence
                         best_result = result
-                        logger.debug(
-                            f"New best result with confidence {overall_confidence:.2f}"
-                        )
+                        logger.debug(f"New best result with confidence {overall_confidence:.2f}")
 
                 # Early exit if we have high confidence
                 if best_confidence >= 0.8:
@@ -595,7 +566,7 @@ class ContextAnalyzer:
 
         return best_result
 
-    def _analyze_conservative(self, image_path: str) -> Optional[ContextAnalysisResult]:
+    def _analyze_conservative(self, image_path: str) -> ContextAnalysisResult | None:
         """
         Conservative analysis strategy.
 
@@ -648,9 +619,7 @@ class ContextAnalyzer:
                     lambda: self.ollama_client.analyze_image_context(
                         image_input=image_path,
                         model_name=primary_model,
-                        prompt_template=self.ollama_client.get_prompt_template(
-                            "uncertainty_handling"
-                        ),
+                        prompt_template=self.ollama_client.get_prompt_template("uncertainty_handling"),
                         use_base64=self.config.use_base64,
                     ),
                     "Uncertainty handling analysis",
@@ -658,7 +627,7 @@ class ContextAnalyzer:
 
         return result
 
-    def _analyze_fast(self, image_path: str) -> Optional[ContextAnalysisResult]:
+    def _analyze_fast(self, image_path: str) -> ContextAnalysisResult | None:
         """
         Fast analysis strategy.
 
@@ -676,9 +645,7 @@ class ContextAnalyzer:
             lambda: self.ollama_client.analyze_image_context(
                 image_input=image_path,
                 model_name=primary_model,
-                prompt_template=self.ollama_client.get_prompt_template(
-                    "simple_fallback"
-                ),
+                prompt_template=self.ollama_client.get_prompt_template("simple_fallback"),
                 use_base64=self.config.use_base64,
             ),
             "Fast analysis",
@@ -690,7 +657,7 @@ class ContextAnalyzer:
         self,
         image_path: str,
         fallback_strategy: FallbackStrategy,
-    ) -> Optional[ContextAnalysisResult]:
+    ) -> ContextAnalysisResult | None:
         """
         Apply fallback strategy when primary analysis fails.
 
@@ -713,9 +680,7 @@ class ContextAnalyzer:
                 lambda: self.ollama_client.analyze_image_context(
                     image_input=image_path,
                     model_name=primary_model,
-                    prompt_template=self.ollama_client.get_prompt_template(
-                        "simple_fallback"
-                    ),
+                    prompt_template=self.ollama_client.get_prompt_template("simple_fallback"),
                     use_base64=self.config.use_base64,
                 ),
                 f"Fallback strategy: {fallback_strategy}",
@@ -726,9 +691,7 @@ class ContextAnalyzer:
                 lambda: self.ollama_client.analyze_image_context(
                     image_input=image_path,
                     model_name=primary_model,
-                    prompt_template=self.ollama_client.get_prompt_template(
-                        "uncertainty_handling"
-                    ),
+                    prompt_template=self.ollama_client.get_prompt_template("uncertainty_handling"),
                     use_base64=self.config.use_base64,
                 ),
                 f"Fallback strategy: {fallback_strategy}",
@@ -739,9 +702,7 @@ class ContextAnalyzer:
                 lambda: self.ollama_client.analyze_image_context(
                     image_input=image_path,
                     model_name=primary_model,
-                    prompt_template=self.ollama_client.get_prompt_template(
-                        "multi_hypothesis"
-                    ),
+                    prompt_template=self.ollama_client.get_prompt_template("multi_hypothesis"),
                     use_base64=self.config.use_base64,
                 ),
                 f"Fallback strategy: {fallback_strategy}",
@@ -821,24 +782,14 @@ class ContextAnalyzer:
                         # Basic validation: start year < end year, reasonable range
                         try:
                             start_year, end_year = map(int, decade.split("-"))
-                            if (
-                                start_year < end_year
-                                and 1800 <= start_year <= 2100
-                                and 1800 <= end_year <= 2100
-                            ):
+                            if start_year < end_year and 1800 <= start_year <= 2100 and 1800 <= end_year <= 2100:
                                 valid_decades.append(decade)
                             else:
-                                logger.debug(
-                                    f"Skipping invalid alternative decade range: {decade}"
-                                )
+                                logger.debug(f"Skipping invalid alternative decade range: {decade}")
                         except ValueError:
-                            logger.debug(
-                                f"Skipping invalid alternative decade format: {decade}"
-                            )
+                            logger.debug(f"Skipping invalid alternative decade format: {decade}")
                     else:
-                        logger.debug(
-                            f"Skipping invalid alternative decade format: {decade}"
-                        )
+                        logger.debug(f"Skipping invalid alternative decade format: {decade}")
             result.alternative_decades = valid_decades if valid_decades else None
 
         return result
@@ -885,12 +836,10 @@ class ContextAnalyzer:
         else:
             # This should never happen since decade confidence always has weight
             # But as a safety fallback, return 0.0
-            logger.warning(
-                "No weights applied in confidence calculation, returning 0.0"
-            )
+            logger.warning("No weights applied in confidence calculation, returning 0.0")
             return 0.0
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         Perform health check on the analyzer and underlying Ollama client.
 
@@ -900,9 +849,7 @@ class ContextAnalyzer:
         ollama_health = self.ollama_client.health_check()
 
         health_status = {
-            "status": "healthy"
-            if ollama_health.get("status") == "healthy"
-            else "unhealthy",
+            "status": "healthy" if ollama_health.get("status") == "healthy" else "unhealthy",
             "analyzer_config": {
                 "strategy": self.config.strategy.value,
                 "fallback_strategy": self.config.fallback_strategy.value,
@@ -915,23 +862,23 @@ class ContextAnalyzer:
 
         return health_status
 
-    def get_available_strategies(self) -> List[str]:
+    def get_available_strategies(self) -> list[str]:
         """Get list of available analysis strategies."""
         return [strategy.value for strategy in AnalysisStrategy]
 
-    def get_available_fallback_strategies(self) -> List[str]:
+    def get_available_fallback_strategies(self) -> list[str]:
         """Get list of available fallback strategies."""
         return [strategy.value for strategy in FallbackStrategy]
 
 
 # Default analyzer instance
-_default_analyzer: Optional[ContextAnalyzer] = None
+_default_analyzer: ContextAnalyzer | None = None
 
 
 def get_context_analyzer(
-    ollama_client: Optional[OllamaClient] = None,
-    config: Optional[ContextAnalyzerConfig] = None,
-    ollama_config: Optional[OllamaConfig] = None,
+    ollama_client: OllamaClient | None = None,
+    config: ContextAnalyzerConfig | None = None,
+    ollama_config: OllamaConfig | None = None,
 ) -> ContextAnalyzer:
     """
     Get or create default ContextAnalyzer instance.
@@ -958,10 +905,7 @@ def get_context_analyzer(
     else:
         # Check if caller is trying to use different ollama_client
         # than what the singleton was created with
-        if (
-            ollama_client is not None
-            and _default_analyzer.ollama_client is not ollama_client
-        ):
+        if ollama_client is not None and _default_analyzer.ollama_client is not ollama_client:
             raise ValueError(
                 "Cannot get context analyzer with different ollama_client when "
                 "singleton already exists. Existing analyzer was created with "

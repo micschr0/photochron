@@ -73,9 +73,7 @@ class AnchorLayerStage(PipelineStage):
                     )
                 )
 
-    def _persist_constraints(
-        self, run_id: str, cs: ConstraintSet, source_path: Path | None
-    ) -> None:
+    def _persist_constraints(self, run_id: str, cs: ConstraintSet, source_path: Path | None) -> None:
         store = get_store()
         with store.transaction() as conn:
             helper = store.get_query_helper(conn)

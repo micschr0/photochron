@@ -2,11 +2,6 @@
 Schema validation tests to ensure SQLite schema matches specification.
 """
 
-import sqlite3
-import pytest
-
-from photochron.store.schema import SCHEMA_SQL
-
 
 def extract_table_schema(sql: str) -> dict:
     """
@@ -96,19 +91,12 @@ def test_photos_table_columns(database_store):
     }
 
     missing_columns = required_columns - columns
-    assert len(missing_columns) == 0, (
-        f"Missing columns in photos table: {missing_columns}"
-    )
+    assert len(missing_columns) == 0, f"Missing columns in photos table: {missing_columns}"
 
     # Check that content_hash is UNIQUE
-    cursor = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='photos'"
-    )
+    cursor = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='photos'")
     table_sql = cursor.fetchone()[0]
-    assert (
-        "content_hash TEXT NOT NULL UNIQUE" in table_sql
-        or "UNIQUE(content_hash)" in table_sql
-    )
+    assert "content_hash TEXT NOT NULL UNIQUE" in table_sql or "UNIQUE(content_hash)" in table_sql
 
 
 def test_faces_table_columns(database_store):
@@ -133,27 +121,21 @@ def test_faces_table_columns(database_store):
     }
 
     missing_columns = required_columns - columns
-    assert len(missing_columns) == 0, (
-        f"Missing columns in faces table: {missing_columns}"
-    )
+    assert len(missing_columns) == 0, f"Missing columns in faces table: {missing_columns}"
 
     # Check foreign keys
     cursor = conn.execute("PRAGMA foreign_key_list(faces)")
-    foreign_keys = [
-        (row[2], row[3], row[4]) for row in cursor.fetchall()
-    ]  # (table, from, to)
+    foreign_keys = [(row[2], row[3], row[4]) for row in cursor.fetchall()]  # (table, from, to)
 
     # Should have foreign key from photo_id to photos.id
     photo_fk = any(
-        table == "photos" and from_col == "photo_id" and to_col == "id"
-        for table, from_col, to_col in foreign_keys
+        table == "photos" and from_col == "photo_id" and to_col == "id" for table, from_col, to_col in foreign_keys
     )
     assert photo_fk, "Missing foreign key from photo_id to photos.id"
 
     # Should have foreign key from person_id to persons.id (can be NULL)
     person_fk = any(
-        table == "persons" and from_col == "person_id" and to_col == "id"
-        for table, from_col, to_col in foreign_keys
+        table == "persons" and from_col == "person_id" and to_col == "id" for table, from_col, to_col in foreign_keys
     )
     assert person_fk, "Missing foreign key from person_id to persons.id"
 
@@ -184,19 +166,12 @@ def test_context_table_columns(database_store):
     }
 
     missing_columns = required_columns - columns
-    assert len(missing_columns) == 0, (
-        f"Missing columns in context table: {missing_columns}"
-    )
+    assert len(missing_columns) == 0, f"Missing columns in context table: {missing_columns}"
 
     # Check that photo_id is UNIQUE
-    cursor = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='context'"
-    )
+    cursor = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='context'")
     table_sql = cursor.fetchone()[0]
-    assert (
-        "photo_id INTEGER NOT NULL UNIQUE" in table_sql
-        or "UNIQUE(photo_id)" in table_sql
-    )
+    assert "photo_id INTEGER NOT NULL UNIQUE" in table_sql or "UNIQUE(photo_id)" in table_sql
 
 
 def test_rankings_table_columns(database_store):
@@ -218,9 +193,7 @@ def test_rankings_table_columns(database_store):
     }
 
     missing_columns = required_columns - columns
-    assert len(missing_columns) == 0, (
-        f"Missing columns in rankings table: {missing_columns}"
-    )
+    assert len(missing_columns) == 0, f"Missing columns in rankings table: {missing_columns}"
 
 
 def test_pipeline_runs_table_columns(database_store):
@@ -244,14 +217,10 @@ def test_pipeline_runs_table_columns(database_store):
     }
 
     missing_columns = required_columns - columns
-    assert len(missing_columns) == 0, (
-        f"Missing columns in pipeline_runs table: {missing_columns}"
-    )
+    assert len(missing_columns) == 0, f"Missing columns in pipeline_runs table: {missing_columns}"
 
     # Check that run_id is UNIQUE
-    cursor = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='pipeline_runs'"
-    )
+    cursor = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='pipeline_runs'")
     table_sql = cursor.fetchone()[0]
     assert "run_id TEXT NOT NULL UNIQUE" in table_sql or "UNIQUE(run_id)" in table_sql
 
@@ -265,19 +234,12 @@ def test_persons_table_columns(database_store):
     required_columns = {"id", "person_id", "name", "birthday", "created_at"}
 
     missing_columns = required_columns - columns
-    assert len(missing_columns) == 0, (
-        f"Missing columns in persons table: {missing_columns}"
-    )
+    assert len(missing_columns) == 0, f"Missing columns in persons table: {missing_columns}"
 
     # Check that person_id is UNIQUE
-    cursor = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='persons'"
-    )
+    cursor = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='persons'")
     table_sql = cursor.fetchone()[0]
-    assert (
-        "person_id TEXT NOT NULL UNIQUE" in table_sql
-        or "UNIQUE(person_id)" in table_sql
-    )
+    assert "person_id TEXT NOT NULL UNIQUE" in table_sql or "UNIQUE(person_id)" in table_sql
 
 
 def test_schema_indices(database_store):
@@ -287,9 +249,7 @@ def test_schema_indices(database_store):
             SELECT name, tbl_name, sql FROM sqlite_master 
             WHERE type='index' AND name NOT LIKE 'sqlite_%'
         """)
-        indices = {
-            (row[0], row[1]) for row in cursor.fetchall()
-        }  # (index_name, table_name)
+        indices = {(row[0], row[1]) for row in cursor.fetchall()}  # (index_name, table_name)
 
     # Check for critical indices
     critical_indices = [
@@ -302,9 +262,7 @@ def test_schema_indices(database_store):
     ]
 
     for index_name, table_name in critical_indices:
-        assert (index_name, table_name) in indices, (
-            f"Missing index {index_name} on {table_name}"
-        )
+        assert (index_name, table_name) in indices, f"Missing index {index_name} on {table_name}"
 
 
 def test_schema_foreign_keys_enabled(database_store):
@@ -327,9 +285,7 @@ def test_schema_version_tracking(database_store):
         assert version == 1, f"Expected schema version 1, got {version}"
 
         # Check that schema_setup record exists
-        cursor = conn.execute(
-            "SELECT schema_version FROM pipeline_runs WHERE run_id = 'schema_setup'"
-        )
+        cursor = conn.execute("SELECT schema_version FROM pipeline_runs WHERE run_id = 'schema_setup'")
         row = cursor.fetchone()
         assert row is not None, "schema_setup record not found"
         assert row[0] == 1, f"schema_setup record has wrong version: {row[0]}"

@@ -4,7 +4,8 @@ InsightFace wrapper for face detection, embedding extraction, and age estimation
 Encapsulates the InsightFace model and provides a clean interface for the face layer.
 """
 
-from typing import List, Tuple, Optional, Any
+from typing import Any
+
 import numpy as np
 from loguru import logger
 
@@ -29,7 +30,7 @@ class InsightFaceWrapper:
         self.model_name = model_name
         self.detection_threshold = detection_threshold
         self.use_gpu = use_gpu
-        self._model: Optional[Any] = None
+        self._model: Any | None = None
         self._providers = ["CPUExecutionProvider"]
         if use_gpu:
             # Try CUDA provider if GPU is requested
@@ -43,9 +44,7 @@ class InsightFaceWrapper:
         try:
             from insightface.app import FaceAnalysis
         except ImportError as e:
-            raise ImportError(
-                "InsightFace not installed. Please install via 'pip install insightface'"
-            ) from e
+            raise ImportError("InsightFace not installed. Please install via 'pip install insightface'") from e
 
         logger.info(f"Loading InsightFace model '{self.model_name}'")
         self._model = FaceAnalysis(name=self.model_name, providers=self._providers)
@@ -53,9 +52,7 @@ class InsightFaceWrapper:
         self._model.prepare(ctx_id=ctx_id, det_size=(640, 640))
         logger.info("InsightFace model loaded successfully")
 
-    def detect_faces(
-        self, image: np.ndarray
-    ) -> List[Tuple[Tuple[int, int, int, int], float]]:
+    def detect_faces(self, image: np.ndarray) -> list[tuple[tuple[int, int, int, int], float]]:
         """
         Detect faces in an image.
 
@@ -79,9 +76,7 @@ class InsightFaceWrapper:
             if confidence >= self.detection_threshold:
                 results.append(((bbox[0], bbox[1], bbox[2], bbox[3]), confidence))
 
-        logger.debug(
-            f"Detected {len(results)} faces (threshold={self.detection_threshold})"
-        )
+        logger.debug(f"Detected {len(results)} faces (threshold={self.detection_threshold})")
         return results
 
     def compute_embedding(self, face_image: np.ndarray) -> np.ndarray:
@@ -114,7 +109,7 @@ class InsightFaceWrapper:
             embedding = embedding / norm
         return embedding
 
-    def estimate_age(self, face_image: np.ndarray) -> Tuple[float, float]:
+    def estimate_age(self, face_image: np.ndarray) -> tuple[float, float]:
         """
         Estimate age of a face.
 
@@ -140,9 +135,7 @@ class InsightFaceWrapper:
         std_dev = max(age * 0.1, 1.0)  # at least 1 year
         return float(age), float(std_dev)
 
-    def batch_detect(
-        self, images: List[np.ndarray]
-    ) -> List[List[Tuple[Tuple[int, int, int, int], float]]]:
+    def batch_detect(self, images: list[np.ndarray]) -> list[list[tuple[tuple[int, int, int, int], float]]]:
         """
         Detect faces in a batch of images.
 

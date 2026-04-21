@@ -14,9 +14,7 @@ def build_report(run_id: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(rows)
     review = sum(1 for r in rows if r.get("review_needed"))
     with_year = sum(1 for r in rows if r.get("estimated_year") is not None)
-    avg_conf = (
-        sum(float(r.get("confidence") or 0.0) for r in rows) / total if total else 0.0
-    )
+    avg_conf = sum(float(r.get("confidence") or 0.0) for r in rows) / total if total else 0.0
 
     years_present = [r["estimated_year"] for r in rows if r.get("estimated_year")]
     year_range = [min(years_present), max(years_present)] if years_present else None

@@ -13,9 +13,7 @@ def _sanitize(name: str) -> str:
     return _INVALID_CHARS.sub("_", name).strip()
 
 
-def build_renamed_filename(
-    sort_rank: int, estimated_year: int | None, original_name: str
-) -> str:
+def build_renamed_filename(sort_rank: int, estimated_year: int | None, original_name: str) -> str:
     """Return '{rank:04d}_{year}-est_{original_name}' with safe characters.
 
     Unknown year becomes 'unknown'. The original extension is preserved.

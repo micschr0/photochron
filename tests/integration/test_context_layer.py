@@ -4,24 +4,20 @@ Integration tests for ContextLayerStage.
 Tests the full pipeline integration with mocked dependencies.
 """
 
-import pytest
 import tempfile
-import shutil
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
-import json
+from pathlib import Path
+from unittest.mock import Mock
 
-from photochron.pipeline.stages.context_layer import ContextLayerStage
-from photochron.store import DatabaseStore, get_store
+import pytest
+
 from photochron.config import Config, ConfigContext
-from photochron.models.ollama_client import ContextAnalysisResult, ModelType
-from photochron.models import Photo
+from photochron.models.ollama_client import ContextAnalysisResult
+from photochron.pipeline.stages.context_layer import ContextLayerStage
+from photochron.store import DatabaseStore
 
 
-def _create_pipeline_run(
-    store: DatabaseStore, run_id: str, config_hash: str = "test_hash"
-):
+def _create_pipeline_run(store: DatabaseStore, run_id: str, config_hash: str = "test_hash"):
     """Insert a pipeline run record so mark_complete can update it."""
     with store.transaction() as conn:
         conn.execute(
@@ -55,9 +51,7 @@ def test_context_layer_basic_integration(database_store, monkeypatch):
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_config", lambda: mock_config)
 
     # Create a temporary directory for downsampled images
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -75,9 +69,7 @@ def test_context_layer_basic_integration(database_store, monkeypatch):
         monkeypatch.setattr("photochron.store.get_store", lambda: store)
         monkeypatch.setattr("photochron.store._store", store)
         monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.context_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_store", lambda: store)
         with store.transaction() as conn:
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -180,9 +172,7 @@ def test_context_layer_duplicate_processing(database_store, monkeypatch):
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_config", lambda: mock_config)
 
     # Insert a photo with an existing context record
     store = database_store
@@ -190,9 +180,7 @@ def test_context_layer_duplicate_processing(database_store, monkeypatch):
     monkeypatch.setattr("photochron.store.get_store", lambda: store)
     monkeypatch.setattr("photochron.store._store", store)
     monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_store", lambda: store
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_store", lambda: store)
     with store.transaction() as conn:
         conn.execute(
             "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -287,9 +275,7 @@ def test_context_layer_analysis_failure(database_store, monkeypatch):
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_config", lambda: mock_config)
 
     # Create a temporary directory for downsampled images
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -307,9 +293,7 @@ def test_context_layer_analysis_failure(database_store, monkeypatch):
         monkeypatch.setattr("photochron.store.get_store", lambda: store)
         monkeypatch.setattr("photochron.store._store", store)
         monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.context_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_store", lambda: store)
         with store.transaction() as conn:
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -398,9 +382,7 @@ def test_context_layer_low_confidence_season(database_store, monkeypatch):
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_config", lambda: mock_config)
 
     # Create a temporary directory for downsampled images
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -418,9 +400,7 @@ def test_context_layer_low_confidence_season(database_store, monkeypatch):
         monkeypatch.setattr("photochron.store.get_store", lambda: store)
         monkeypatch.setattr("photochron.store._store", store)
         monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.context_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_store", lambda: store)
         with store.transaction() as conn:
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -526,9 +506,7 @@ def test_context_layer_degraded_mode(database_store, monkeypatch):
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_config", lambda: mock_config)
 
     # Insert a photo record
     store = database_store
@@ -536,9 +514,7 @@ def test_context_layer_degraded_mode(database_store, monkeypatch):
     monkeypatch.setattr("photochron.store.get_store", lambda: store)
     monkeypatch.setattr("photochron.store._store", store)
     monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_store", lambda: store
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_store", lambda: store)
     with store.transaction() as conn:
         conn.execute(
             "INSERT INTO photos (content_hash, file_path, downsample_path) VALUES (?, ?, ?)",
@@ -607,9 +583,7 @@ def test_context_layer_batch_processing(database_store, monkeypatch):
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_config", lambda: mock_config)
 
     # Create a temporary directory for downsampled images
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -630,9 +604,7 @@ def test_context_layer_batch_processing(database_store, monkeypatch):
         monkeypatch.setattr("photochron.store.get_store", lambda: store)
         monkeypatch.setattr("photochron.store._store", store)
         monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.context_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_store", lambda: store)
 
         photo_ids = []
         for i, dummy_path in enumerate(dummy_image_paths):
@@ -650,9 +622,7 @@ def test_context_layer_batch_processing(database_store, monkeypatch):
                         f"phash_batch{i}",
                     ),
                 )
-                cursor = conn.execute(
-                    "SELECT id FROM photos WHERE content_hash = ?", (f"hash_batch{i}",)
-                )
+                cursor = conn.execute("SELECT id FROM photos WHERE content_hash = ?", (f"hash_batch{i}",))
                 photo_ids.append(cursor.fetchone()["id"])
 
         # Mock ContextAnalyzer
@@ -778,9 +748,7 @@ def test_context_layer_missing_downsample_file(database_store, monkeypatch):
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
 
-    monkeypatch.setattr(
-        "photochron.pipeline.stages.context_layer.get_config", lambda: mock_config
-    )
+    monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_config", lambda: mock_config)
 
     # Create a temporary directory for original image
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -796,9 +764,7 @@ def test_context_layer_missing_downsample_file(database_store, monkeypatch):
         monkeypatch.setattr("photochron.store.get_store", lambda: store)
         monkeypatch.setattr("photochron.store._store", store)
         monkeypatch.setattr("photochron.pipeline.get_store", lambda: store)
-        monkeypatch.setattr(
-            "photochron.pipeline.stages.context_layer.get_store", lambda: store
-        )
+        monkeypatch.setattr("photochron.pipeline.stages.context_layer.get_store", lambda: store)
         with store.transaction() as conn:
             conn.execute(
                 "INSERT INTO photos (content_hash, file_path, downsample_path, exif_datetime, make, model, perceptual_hash) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -869,9 +835,7 @@ def test_context_layer_missing_downsample_file(database_store, monkeypatch):
             context_count = cursor.fetchone()[0]
             assert context_count == 1
 
-            cursor = conn.execute(
-                "SELECT photo_id, decade, decade_confidence FROM context"
-            )
+            cursor = conn.execute("SELECT photo_id, decade, decade_confidence FROM context")
             context = cursor.fetchone()
             assert context["photo_id"] == photo_id
             assert context["decade"] == "2005-2010"

@@ -28,9 +28,7 @@ def test_parse_persons_and_events():
                 "photos_before": ["IMG_041.jpg"],
             }
         ],
-        "known_dates": [
-            {"file": "Weihnachten.jpg", "year": 1990, "month": 12, "type": "soft"}
-        ],
+        "known_dates": [{"file": "Weihnachten.jpg", "year": 1990, "month": 12, "type": "soft"}],
     }
     cs = parse_anchors(data)
     assert len(cs.persons) == 2

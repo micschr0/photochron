@@ -2,13 +2,12 @@
 Integration tests for CLI end-to-end functionality.
 """
 
-from pathlib import Path
 import tempfile
-import shutil
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from photochron.cli import app
-
 
 runner = CliRunner()
 

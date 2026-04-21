@@ -2,8 +2,9 @@
 Integration test for basic pipeline flow with mocked AI.
 """
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch
 
 from photochron.pipeline import PipelineRunner, get_registry
 from photochron.store import get_store
@@ -17,12 +18,6 @@ def test_pipeline_registry_initialization():
     # Check that stages are registered (they should be auto-registered via decorator)
     # Note: This test may fail if modules haven't been imported yet
     # For now, we'll manually import them
-    import photochron.pipeline.stages.ingestion
-    import photochron.pipeline.stages.face_layer
-    import photochron.pipeline.stages.context_layer
-    import photochron.pipeline.stages.anchor_layer
-    import photochron.pipeline.stages.ranking_engine
-    import photochron.pipeline.stages.output_layer
 
     # Re-get registry after imports
     registry = get_registry()
@@ -53,9 +48,7 @@ def test_pipeline_runner_creation(database_store, monkeypatch):
 
     # Verify run exists in database
     with database_store.transaction() as conn:
-        cursor = conn.execute(
-            "SELECT run_id, status FROM pipeline_runs WHERE run_id = ?", (run_id,)
-        )
+        cursor = conn.execute("SELECT run_id, status FROM pipeline_runs WHERE run_id = ?", (run_id,))
         row = cursor.fetchone()
         assert row is not None
         assert row[0] == run_id
@@ -89,12 +82,6 @@ def test_pipeline_execution_order(
     mock_output_run.return_value = None
 
     # Import stages to ensure they're registered
-    import photochron.pipeline.stages.ingestion
-    import photochron.pipeline.stages.face_layer
-    import photochron.pipeline.stages.context_layer
-    import photochron.pipeline.stages.anchor_layer
-    import photochron.pipeline.stages.ranking_engine
-    import photochron.pipeline.stages.output_layer
 
     # Patch get_store to use test database
     monkeypatch.setattr("photochron.store.get_store", lambda: database_store)
@@ -103,7 +90,7 @@ def test_pipeline_execution_order(
     runner = PipelineRunner()
 
     # Run pipeline (dry run)
-    run_id = runner.run_pipeline("/test/input", "/test/output", dry_run=True)
+    runner.run_pipeline("/test/input", "/test/output", dry_run=True)
 
     # Verify stages were called
     assert mock_ingestion_run.called
@@ -121,12 +108,12 @@ def test_pipeline_execution_order(
 def test_pipeline_stage_dependencies():
     """Test that stage dependencies are correctly defined."""
     # Import stages
-    from photochron.pipeline.stages.ingestion import IngestionStage
-    from photochron.pipeline.stages.face_layer import FaceLayerStage
-    from photochron.pipeline.stages.context_layer import ContextLayerStage
     from photochron.pipeline.stages.anchor_layer import AnchorLayerStage
-    from photochron.pipeline.stages.ranking_engine import RankingEngineStage
+    from photochron.pipeline.stages.context_layer import ContextLayerStage
+    from photochron.pipeline.stages.face_layer import FaceLayerStage
+    from photochron.pipeline.stages.ingestion import IngestionStage
     from photochron.pipeline.stages.output_layer import OutputLayerStage
+    from photochron.pipeline.stages.ranking_engine import RankingEngineStage
 
     # Check each stage's dependencies
     ingestion = IngestionStage()
@@ -157,13 +144,11 @@ def test_pipeline_skip_completed_stages(mock_should_run, monkeypatch, database_s
     mock_should_run.return_value = False
 
     # Import stages
-    import photochron.pipeline.stages.ingestion
     import photochron.pipeline.stages.face_layer
+    import photochron.pipeline.stages.ingestion
 
     # Patch the run method to track calls
-    with patch.object(
-        photochron.pipeline.stages.ingestion.IngestionStage, "run"
-    ) as mock_run:
+    with patch.object(photochron.pipeline.stages.ingestion.IngestionStage, "run") as mock_run:
         mock_run.return_value = None
 
         # Patch get_store to use test database
@@ -173,7 +158,7 @@ def test_pipeline_skip_completed_stages(mock_should_run, monkeypatch, database_s
         runner = PipelineRunner()
 
         # Run pipeline
-        run_id = runner.run_pipeline("/test/input", "/test/output", dry_run=True)
+        runner.run_pipeline("/test/input", "/test/output", dry_run=True)
 
         # Since should_run returns False, run should not be called
         assert not mock_run.called
@@ -207,10 +192,8 @@ def test_pipeline_error_handling(monkeypatch, database_store):
         # Verify run is marked as failed in database
         store = get_store()
         with store.transaction() as conn:
-            cursor = conn.execute(
-                "SELECT status FROM pipeline_runs ORDER BY start_time DESC LIMIT 1"
-            )
-            row = cursor.fetchone()
+            cursor = conn.execute("SELECT status FROM pipeline_runs ORDER BY start_time DESC LIMIT 1")
+            cursor.fetchone()
             # Note: The current implementation marks failure but still raises
             # In a real implementation, we'd check status == 'failed'
     finally:

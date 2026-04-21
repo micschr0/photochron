@@ -3,7 +3,7 @@ CLI command implementations.
 """
 
 from pathlib import Path
-from typing import Optional
+
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -22,7 +22,7 @@ def run(
         readable=True,
         resolve_path=True,
     ),
-    output_dir: Optional[Path] = typer.Option(
+    output_dir: Path | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -58,7 +58,7 @@ def run(
         output_dir.mkdir(parents=True, exist_ok=True)
 
     # Show pipeline configuration
-    console.print(f"[bold]PhotoChron Pipeline[/bold]")
+    console.print("[bold]PhotoChron Pipeline[/bold]")
     console.print(f"  Input directory: {input_dir}")
     console.print(f"  Output directory: {output_dir}")
     console.print(f"  Dry run: {'Yes' if dry_run else 'No'}")
@@ -185,7 +185,8 @@ def status() -> None:
 
             # Get latest pipeline run
             run_info = conn.execute(
-                "SELECT run_id, status, start_time, photos_processed FROM pipeline_runs ORDER BY start_time DESC LIMIT 1"
+                "SELECT run_id, status, start_time, photos_processed "
+                "FROM pipeline_runs ORDER BY start_time DESC LIMIT 1"
             ).fetchone()
 
         console.print(f"[dim]Database: {store.db_path}[/dim]")
