@@ -7,18 +7,20 @@ and query helpers for the 6-stage pipeline.
 
 import sqlite3
 import threading
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Optional
 
 from photochron import CACHE_DIR
+
 from .queries import QueryHelper
 
 
 class DatabaseStore:
     """Manages SQLite database connections with connection pooling."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or CACHE_DIR / "cache.db"
         self._local = threading.local()
 
@@ -57,7 +59,7 @@ class DatabaseStore:
 
 
 # Global store instance
-_store: Optional[DatabaseStore] = None
+_store: DatabaseStore | None = None
 
 
 def get_store() -> DatabaseStore:

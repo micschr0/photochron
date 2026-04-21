@@ -67,6 +67,7 @@ def test_schema_contains_all_tables(database_store):
         "rankings",
         "pipeline_runs",
         "persons",
+        "anchor_constraints",
     }
 
     missing_tables = required_tables - tables
