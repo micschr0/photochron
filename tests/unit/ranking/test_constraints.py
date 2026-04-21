@@ -110,7 +110,7 @@ def test_file_match_by_basename_and_suffix():
     b = DateEstimate(year=2000)
     apply_constraints(
         [
-            (1, "/home/user/photos/photo.jpg", a),
+            (1, "subdir/photo.jpg", a),
             (2, "photo.jpg", b),
         ],
         cs,
