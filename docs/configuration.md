@@ -29,6 +29,7 @@ PhotoChron uses a hierarchical configuration system with sensible defaults. Conf
 - `supported_formats`: List of supported image file extensions (default: `.jpg`, `.jpeg`, `.png`, `.heic`, `.heif`, `.cr2`, `.nef`, `.arw`, `.dng`)
 - `skip_duplicates`: Whether to skip duplicate files (default: `true`)
 - `extract_gps`: Whether to extract GPS coordinates from EXIF (default: `false`, opt-in – GPS can de-anonymize private family photos when reports are shared)
+- `workers`: Number of concurrent threads used to decode images, compute hashes, and extract EXIF (default: `4`, range 1–32). Ingestion releases the GIL inside Pillow / imagehash / sqlite3, so threads give near-linear speed-up on 4–8 cores. Set to `1` for deterministic ordering when debugging.
 - `fallback_timestamp`: Fallback timestamp source when EXIF missing (default: `file_mtime`)
 
 ### Face Layer Configuration (`ConfigFace`)

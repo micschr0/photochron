@@ -12,6 +12,7 @@ from photochron.config import Config, load_config, save_config
 from photochron.config.models import (
     ConfigContext,
     ConfigFace,
+    ConfigIngestion,
     ConfigModels,
     ConfigPaths,
     ConfigPipeline,
@@ -185,3 +186,14 @@ def test_config_face_rejects_unknown_backend():
     """`backend` is a Literal; unknown values should fail Pydantic validation."""
     with pytest.raises(ValueError):
         ConfigFace(backend="tpu")  # type: ignore[arg-type]
+
+
+def test_config_ingestion_workers_default_and_bounds():
+    """Workers default is 4 and values outside 1..32 should be rejected."""
+    assert ConfigIngestion().workers == 4
+    ConfigIngestion(workers=1)  # lower bound
+    ConfigIngestion(workers=32)  # upper bound
+    with pytest.raises(ValueError):
+        ConfigIngestion(workers=0)
+    with pytest.raises(ValueError):
+        ConfigIngestion(workers=33)
