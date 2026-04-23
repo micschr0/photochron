@@ -188,11 +188,20 @@ class PipelineRunner:
             )
 
     def create_run(self, config_hash: str) -> str:
-        """Create a new pipeline run row and return its ID."""
+        """Create a new pipeline run row and return its ID.
+
+        Ensures the SQLite schema exists first – ``migrate_schema`` is
+        idempotent, so the happy path just no-ops after the initial install.
+        Without this, the very first ``photochron run`` on a fresh machine
+        would fail with ``no such table: pipeline_runs``.
+        """
+        from photochron.store.schema import migrate_schema
+
         run_id = f"run_{uuid.uuid4().hex[:8]}"
 
         store = get_store()
         with store.transaction() as conn:
+            migrate_schema(conn)
             conn.execute(
                 """
                 INSERT INTO pipeline_runs (run_id, schema_version, config_hash, start_time, status)
