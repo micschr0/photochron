@@ -4,6 +4,7 @@ Pipeline foundation for PhotoChron 6-stage architecture.
 Defines the PipelineStage abstract base class and pipeline orchestration.
 """
 
+import hashlib
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -12,6 +13,10 @@ from loguru import logger
 
 from photochron.config import get_config
 from photochron.store import get_store
+
+
+class PipelineConfigurationError(RuntimeError):
+    """Raised when the pipeline cannot start due to missing configuration."""
 
 
 class PipelineStage(ABC):
@@ -151,16 +156,40 @@ def register_stage(stage_class: type[PipelineStage]) -> None:
 
 
 class PipelineRunner:
-    """Orchestrates execution of pipeline stages."""
+    """Orchestrates execution of pipeline stages.
 
-    def __init__(self):
+    Keeps the surface small and stage-agnostic so that later frontends
+    (Tauri sidecar, HTTP layer) can drive the same entrypoint without
+    touching the CLI.
+    """
+
+    def __init__(self) -> None:
         self.registry = get_registry()
         self.config = get_config()
 
-    def create_run(self) -> str:
-        """Create a new pipeline run and return its ID."""
+    def _compute_config_hash(self) -> str:
+        """SHA256 over the serialized config – stable identifier for cache keys."""
+        payload = self.config.model_dump_json(exclude={"input_dir", "dry_run"})
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _require_configured_models(self) -> None:
+        """Fail fast when opt-in model fields are still empty."""
+        missing: list[str] = []
+        if not self.config.face.model_name:
+            missing.append("face.model_name")
+        if not self.config.context.primary_model:
+            missing.append("context.primary_model")
+        if not self.config.context.fallback_model:
+            missing.append("context.fallback_model")
+        if missing:
+            raise PipelineConfigurationError(
+                "No AI model is configured. Uncomment the desired entries in "
+                "config.yaml after verifying their licenses. Missing: " + ", ".join(missing)
+            )
+
+    def create_run(self, config_hash: str) -> str:
+        """Create a new pipeline run row and return its ID."""
         run_id = f"run_{uuid.uuid4().hex[:8]}"
-        config_hash = "placeholder"  # TODO: Compute actual config hash
 
         store = get_store()
         with store.transaction() as conn:
@@ -181,19 +210,25 @@ class PipelineRunner:
         Args:
             input_dir: Input directory path
             output_dir: Output directory path
-            dry_run: If True, don't write output files
+            dry_run: If True, stages that write to disk should skip output
 
         Returns:
             Run ID for this execution
         """
-        run_id = self.create_run()
+        self._require_configured_models()
 
-        # Validate dependencies
+        # Runtime overrides – stages read these from config to stay stateless.
+        self.config.input_dir = input_dir
+        self.config.paths.output_dir = output_dir
+        self.config.dry_run = dry_run
+
+        config_hash = self._compute_config_hash()
+        run_id = self.create_run(config_hash)
+
         errors = self.registry.validate_dependencies()
         if errors:
             raise RuntimeError(f"Pipeline dependency errors: {', '.join(errors)}")
 
-        # Execute stages in dependency order
         stage_order = self.registry.get_dependency_order()
 
         for stage_name in stage_order:
@@ -207,7 +242,7 @@ class PipelineRunner:
             with logger.contextualize(run_id=run_id, stage=stage_name):
                 logger.info("Stage starting")
                 try:
-                    stage.run(run_id, "placeholder")
+                    stage.run(run_id, config_hash)
                     stage.mark_complete(run_id)
                     logger.info("Stage completed")
                 except Exception as e:
@@ -222,6 +257,7 @@ __all__ = [
     "PipelineStage",
     "PipelineRegistry",
     "PipelineRunner",
+    "PipelineConfigurationError",
     "register_stage",
     "get_registry",
 ]

@@ -78,14 +78,17 @@ class FaceLayerStage(PipelineStage):
                         processed += 1
                         if processed % 10 == 0:
                             logger.info(f"Processed {processed}/{total_photos} photos")
-                    except Exception as e:
+                    except (OSError, ValueError, RuntimeError, Image.UnidentifiedImageError) as e:
+                        # Per-photo failures (unreadable file, decoder error, ONNX
+                        # runtime error) must not abort the whole batch; anything
+                        # else indicates a bug and should propagate.
                         logger.warning(f"Failed to process photo {photo_id}: {e}")
                         continue
 
             logger.info(f"Face layer stage completed. Processed {processed}/{total_photos} photos")
             self.mark_complete(run_id, photos_processed=processed)
 
-        except Exception as e:
+        except (OSError, RuntimeError, sqlite3.DatabaseError) as e:
             logger.error(f"Face layer stage failed: {e}")
             raise
 

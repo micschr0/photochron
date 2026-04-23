@@ -26,9 +26,11 @@ def test_config_defaults():
     assert config.paths.thumbs_dir == ".photochron/thumbs"
     assert config.paths.output_dir == "photochron_output"
 
-    assert config.models.insightface_version == "buffalo_l"
-    assert config.models.ollama_model == "llava-next:7b"
-    assert config.models.fallback_model == "moondream2"
+    # Model names are opt-in: defaults are empty strings so users must
+    # uncomment them in config.yaml after license verification.
+    assert config.models.insightface_version == ""
+    assert config.models.ollama_model == ""
+    assert config.models.fallback_model == ""
     assert config.models.max_image_size == 1024
 
     assert config.pipeline.face_age_weight == 0.45
@@ -82,8 +84,9 @@ def test_load_config_from_file():
         assert config.paths.output_dir == "/tmp/test_output"
         assert config.models.max_image_size == 2048
 
-        # Check that defaults are used for unspecified fields
-        assert config.models.insightface_version == "buffalo_l"
+        # Check that defaults are used for unspecified fields (model names
+        # are opt-in and default to empty).
+        assert config.models.insightface_version == ""
         assert config.pipeline.face_age_weight == 0.45
     finally:
         config_path.unlink()
@@ -143,8 +146,9 @@ def test_config_context_defaults():
     assert context.ollama_timeout == 300
     assert context.max_retries == 3
     assert context.retry_delay == 2.0
-    assert context.primary_model == "llava-next:7b"
-    assert context.fallback_model == "moondream2"
+    # Context model names are opt-in; default is empty string.
+    assert context.primary_model == ""
+    assert context.fallback_model == ""
     assert context.batch_size == 1
     assert context.min_decade_confidence == 0.3
     assert context.min_season_confidence == 0.4

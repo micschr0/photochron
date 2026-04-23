@@ -3,6 +3,7 @@ Ingestion stage: Read photos, compute hashes, downsample, extract EXIF.
 """
 
 import hashlib
+import struct
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,10 @@ from typing import Any
 import imagehash
 import piexif
 from loguru import logger
+
+# Imported directly so the except clause resolves to a real class even when
+# tests patch the `piexif` module reference wholesale.
+from piexif import InvalidImageDataError
 from PIL import Image
 
 from photochron.config import get_config
@@ -48,6 +53,11 @@ class IngestionStage(PipelineStage):
         """
         logger.info(f"Starting ingestion stage for run {run_id}")
 
+        if not self.config.input_dir:
+            raise RuntimeError(
+                "input_dir is not set – call PipelineRunner.run_pipeline() "
+                "or assign config.input_dir before running this stage."
+            )
         input_dir = Path(self.config.input_dir)
         cache_dir = Path(self.config.cache_dir)
         downsampled_dir = cache_dir / "downsampled"
@@ -234,8 +244,9 @@ class IngestionStage(PipelineStage):
                     exif_data["gps_latitude"] = lat
                     exif_data["gps_longitude"] = lon
 
-        except Exception as e:
-            # Fall back to Pillow's EXIF if piexif fails
+        except (InvalidImageDataError, ValueError, KeyError, TypeError, struct.error, OSError) as e:
+            # Expected piexif failure modes (malformed EXIF, missing GPS segment,
+            # struct decoding errors). Fall back to Pillow's loose EXIF parsing.
             logger.debug(f"piexif failed for {file_path}, trying Pillow: {e}")
             try:
                 with Image.open(file_path) as img:
