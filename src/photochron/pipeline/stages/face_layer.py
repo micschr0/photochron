@@ -27,6 +27,7 @@ class FaceLayerStage(PipelineStage):
         self.wrapper = InsightFaceWrapper(
             model_name=self.face_config.model_name,
             detection_threshold=self.face_config.detection_threshold,
+            backend=self.face_config.backend,
             use_gpu=self.face_config.use_gpu,
         )
 

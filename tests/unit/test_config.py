@@ -11,6 +11,7 @@ import yaml
 from photochron.config import Config, load_config, save_config
 from photochron.config.models import (
     ConfigContext,
+    ConfigFace,
     ConfigModels,
     ConfigPaths,
     ConfigPipeline,
@@ -159,3 +160,28 @@ def test_config_context_defaults():
     assert context.num_ctx == 2048
     assert context.num_gpu == -1
     assert context.model_options == {}
+
+
+def test_config_face_defaults_backend_is_auto():
+    """Default face backend should be 'auto' so new installs pick CoreML on arm64."""
+    face = ConfigFace()
+    assert face.backend == "auto"
+    assert face.use_gpu is None
+
+
+def test_config_face_legacy_use_gpu_migrates_to_cuda():
+    """Old configs with `use_gpu: true` land on backend='cuda' for back-compat."""
+    face = ConfigFace(use_gpu=True)
+    assert face.backend == "cuda"
+
+
+def test_config_face_explicit_backend_not_overridden_by_use_gpu():
+    """Explicit `backend` wins even when `use_gpu: true` is also present."""
+    face = ConfigFace(backend="coreml", use_gpu=True)
+    assert face.backend == "coreml"
+
+
+def test_config_face_rejects_unknown_backend():
+    """`backend` is a Literal; unknown values should fail Pydantic validation."""
+    with pytest.raises(ValueError):
+        ConfigFace(backend="tpu")  # type: ignore[arg-type]

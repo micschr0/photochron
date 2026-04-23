@@ -209,3 +209,102 @@ def status() -> None:
     except Exception as e:
         console.print(f"[red]Error reading database: {e}[/red]")
         console.print("[dim]Make sure the pipeline has been run at least once.[/dim]")
+
+    # Resolved Face backend – shows how 'auto' will be interpreted on this
+    # host so the user does not have to guess whether ANE is active. Printed
+    # even when the database is empty / unreachable.
+    try:
+        from photochron.config import get_config
+        from photochron.face.insightface_wrapper import _resolve_providers
+
+        config = get_config()
+        providers, _ = _resolve_providers(config.face.backend)
+        console.print()
+        console.print("[bold]Face Backend[/bold]")
+        console.print(f"  Configured: {config.face.backend}")
+        console.print(f"  Resolved providers: {', '.join(providers)}")
+    except Exception as e:  # noqa: BLE001 – status must never crash
+        console.print(f"[yellow]Could not resolve face backend: {e}[/yellow]")
+
+
+def doctor() -> None:
+    """
+    Diagnose the PhotoChron environment.
+
+    Read-only health check that reports Python/platform info, the ONNX Runtime
+    providers actually available on this host, the resolved face backend, the
+    configured models (opt-in), and the Ollama reachability status. Does not
+    download or load any models – safe to run on a fresh setup.
+    """
+    import platform as _platform
+    import sys
+
+    _print_privacy_banner()
+    console.print("[bold]PhotoChron doctor[/bold]")
+    console.print(f"  Python: {sys.version.split()[0]}")
+    console.print(f"  Platform: {_platform.system()} {_platform.machine()}")
+
+    # onnxruntime + available providers
+    try:
+        import onnxruntime as ort
+
+        from photochron.face.insightface_wrapper import _is_apple_silicon, _resolve_providers
+
+        console.print(f"  onnxruntime: {ort.__version__}")
+        console.print(f"  Apple Silicon: {'yes' if _is_apple_silicon() else 'no'}")
+        available = ort.get_available_providers()
+        console.print("  Available ONNX Runtime providers:")
+        for p in available:
+            console.print(f"    - {p}")
+    except ImportError:
+        console.print("[yellow]  onnxruntime: not installed[/yellow]")
+        _resolve_providers = None  # type: ignore[assignment]
+
+    # Resolved config (may surface opt-in gaps)
+    try:
+        from photochron.config import get_config
+
+        config = get_config()
+        console.print()
+        console.print("[bold]Configuration[/bold]")
+        face_backend = config.face.backend
+        console.print(f"  face.backend: {face_backend}")
+        if _resolve_providers is not None:
+            providers, _opts = _resolve_providers(face_backend)
+            console.print(f"  face.backend resolved → {', '.join(providers)}")
+        console.print(f"  face.model_name: {config.face.model_name!r}")
+        console.print(f"  context.primary_model: {config.context.primary_model!r}")
+        console.print(f"  context.fallback_model: {config.context.fallback_model!r}")
+        console.print(f"  context.keep_alive: {config.context.keep_alive}")
+        console.print(f"  context.num_ctx: {config.context.num_ctx}")
+        console.print(f"  context.num_gpu: {config.context.num_gpu}")
+        console.print(f"  ingestion.extract_gps: {config.ingestion.extract_gps}")
+
+        missing = []
+        if not config.face.model_name:
+            missing.append("face.model_name")
+        if not config.context.primary_model:
+            missing.append("context.primary_model")
+        if not config.context.fallback_model:
+            missing.append("context.fallback_model")
+        if missing:
+            console.print(
+                f"  [yellow]Opt-in models not configured: {', '.join(missing)}. "
+                "Uncomment the suggested entries in config.yaml after verifying licenses.[/yellow]"
+            )
+    except Exception as e:  # noqa: BLE001
+        console.print(f"[red]Config error: {e}[/red]")
+
+    # Ollama reachability (best-effort, does not pull models)
+    console.print()
+    console.print("[bold]Ollama[/bold]")
+    try:
+        import ollama  # type: ignore[import-not-found]
+
+        response = ollama.list()
+        models = [m.get("name", "?") for m in response.get("models", [])]
+        console.print("  Reachable: yes")
+        console.print(f"  Installed models: {', '.join(models) if models else '(none)'}")
+    except Exception as e:  # noqa: BLE001
+        console.print(f"[yellow]  Reachable: no ({e})[/yellow]")
+        console.print("[dim]  Install and start Ollama – see docs/ollama-setup.md.[/dim]")

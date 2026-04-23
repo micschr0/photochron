@@ -58,7 +58,14 @@ face:
   detection_threshold: 0.5
   matching_threshold: 0.6
   age_confidence_scale: 0.1
-  use_gpu: false
+  # ONNX Runtime execution backend for InsightFace:
+  #   auto   – CoreML on arm64 macOS (Apple Silicon), CPU elsewhere
+  #   cpu    – always available
+  #   cuda   – requires NVIDIA GPU + CUDA-enabled onnxruntime
+  #   coreml – force Apple Neural Engine / Metal (errors on non-Apple Silicon)
+  backend: "auto"
+  # use_gpu: legacy flag – prefer 'backend' above. If set to `true` and
+  # 'backend' stays 'auto', it is migrated to 'cuda' for backward compat.
   batch_size: 1
 
 context:

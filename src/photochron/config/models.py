@@ -2,7 +2,7 @@
 Pydantic models for PhotoChron configuration.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -94,6 +94,9 @@ class ConfigIngestion(BaseModel):
     )
 
 
+FaceBackend = Literal["auto", "cpu", "cuda", "coreml"]
+
+
 class ConfigFace(BaseModel):
     """Face layer configuration."""
 
@@ -119,9 +122,21 @@ class ConfigFace(BaseModel):
         le=1.0,
         description="Scale factor for age estimation standard deviation",
     )
-    use_gpu: bool = Field(
-        False,
-        description="Whether to use GPU acceleration (if available)",
+    backend: FaceBackend = Field(
+        "auto",
+        description=(
+            "ONNX Runtime execution backend for InsightFace. "
+            "'auto' picks CoreML on arm64 macOS and CPU elsewhere. "
+            "'coreml' uses the Apple Neural Engine; 'cuda' needs an NVIDIA GPU; "
+            "'cpu' is always available."
+        ),
+    )
+    use_gpu: bool | None = Field(
+        None,
+        description=(
+            "Deprecated. Prefer 'backend'. If set to true and 'backend' is 'auto', "
+            "backend is upgraded to 'cuda' for backward compatibility."
+        ),
     )
     batch_size: int = Field(
         1,
@@ -129,6 +144,15 @@ class ConfigFace(BaseModel):
         le=64,
         description="Batch size for face detection (higher values may improve GPU utilization)",
     )
+
+    @model_validator(mode="after")
+    def _migrate_use_gpu(self) -> "ConfigFace":
+        """Soft-migration of legacy ``use_gpu: true`` configs to ``backend: 'cuda'``."""
+        if self.use_gpu is True and self.backend == "auto":
+            self.backend = "cuda"
+        # Keep the value around so users can still read their config back; we
+        # only normalise it when it would conflict with an explicit backend.
+        return self
 
 
 class ConfigContext(BaseModel):

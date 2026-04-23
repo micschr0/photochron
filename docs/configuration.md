@@ -36,7 +36,14 @@ PhotoChron uses a hierarchical configuration system with sensible defaults. Conf
 - `detection_threshold`: Minimum confidence for face detection (0.0-1.0, default: `0.5`)
 - `matching_threshold`: Cosine similarity threshold for person matching (0.0-1.0, default: `0.6`)
 - `age_confidence_scale`: Scale factor for age estimation standard deviation (default: `0.1`)
-- `use_gpu`: Whether to use GPU acceleration (default: `false`)
+- `backend`: ONNX Runtime execution backend (default: `"auto"`). One of:
+  - `"auto"` – CoreML on arm64 macOS (Apple Silicon), CPU elsewhere
+  - `"cpu"` – always CPU (works everywhere)
+  - `"cuda"` – NVIDIA GPU via the CUDA EP (requires a CUDA-enabled `onnxruntime` build)
+  - `"coreml"` – Apple Neural Engine / Metal via CoreML EP (errors out on non-Apple-Silicon hosts with a CPU fallback + warning)
+
+  Run `photochron doctor` to see which providers ONNX Runtime actually exposes on your host and how `"auto"` is resolved.
+- `use_gpu`: **Deprecated.** Prefer `backend`. Setting `use_gpu: true` while leaving `backend` at `"auto"` is migrated to `backend: "cuda"` for backward compatibility.
 - `batch_size`: Batch size for face detection (default: `1`)
 
 ### Pipeline Configuration (`ConfigPipeline`)
