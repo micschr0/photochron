@@ -28,11 +28,11 @@ PhotoChron uses a hierarchical configuration system with sensible defaults. Conf
 - `max_downsample_size`: Maximum size for downsampled images in pixels (default: `1024`)
 - `supported_formats`: List of supported image file extensions (default: `.jpg`, `.jpeg`, `.png`, `.heic`, `.heif`, `.cr2`, `.nef`, `.arw`, `.dng`)
 - `skip_duplicates`: Whether to skip duplicate files (default: `true`)
-- `extract_gps`: Whether to extract GPS coordinates from EXIF (default: `true`)
+- `extract_gps`: Whether to extract GPS coordinates from EXIF (default: `false`, opt-in – GPS can de-anonymize private family photos when reports are shared)
 - `fallback_timestamp`: Fallback timestamp source when EXIF missing (default: `file_mtime`)
 
 ### Face Layer Configuration (`ConfigFace`)
-- `model_name`: InsightFace model name (default: `buffalo_l`)
+- `model_name`: InsightFace model name (default: `""` – opt-in; uncomment in `config.yaml` after reviewing the model's license)
 - `detection_threshold`: Minimum confidence for face detection (0.0-1.0, default: `0.5`)
 - `matching_threshold`: Cosine similarity threshold for person matching (0.0-1.0, default: `0.6`)
 - `age_confidence_scale`: Scale factor for age estimation standard deviation (default: `0.1`)
@@ -136,11 +136,11 @@ ingestion:
     - ".arw"
     - ".dng"
   skip_duplicates: true
-  extract_gps: true
+  extract_gps: false  # opt-in; see license/privacy notes
   fallback_timestamp: "file_mtime"
 
 face:
-  model_name: "buffalo_l"
+  # model_name: "buffalo_l"  # opt-in; uncomment after license review
   detection_threshold: 0.5
   matching_threshold: 0.6
   age_confidence_scale: 0.1

@@ -48,6 +48,29 @@ Both are enforced via `pre-commit` and in CI.
 - **Confidence scores on every AI result.** PhotoChron's core contract: low-confidence photos are flagged, not silently wrong.
 - **Non-destructive.** Never modify files in a user's input directory. Always write copies.
 - **Local-only.** No HTTP calls to external image-analysis APIs. All inference must run on-device.
+- **Models are opt-in.** Do not restore hardcoded model defaults; users must uncomment model entries in `config.yaml` after verifying licenses.
+
+## Configuration via environment variables
+
+Every field in `config.yaml` can be overridden via `PHOTOCHRON_<SECTION>_<KEY>`.
+Sections are matched against the known top-level keys (`paths`, `models`,
+`ingestion`, `face`, `pipeline`, `context`, `logging`); everything after the
+section name becomes the field name, so multi-word keys like `ollama_host`
+work as expected.
+
+```bash
+# Point at a remote Ollama service (useful in container/cloud setups)
+export PHOTOCHRON_CONTEXT_OLLAMA_HOST=http://ollama.internal:11434
+
+# Enable GPU for InsightFace
+export PHOTOCHRON_FACE_USE_GPU=true
+
+# Use a larger working image size
+export PHOTOCHRON_MODELS_MAX_IMAGE_SIZE=2048
+```
+
+Values are parsed as int, float, or bool (`true/false/yes/no/1/0`) when
+possible; otherwise kept as strings.
 
 ## Branches & pull requests
 

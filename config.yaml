@@ -1,32 +1,41 @@
 # PhotoChron Configuration
-# Default values from architecture specification
+#
+# IMPORTANT – MODEL LICENSES
+# ---------------------------------------------------------------------------
+# The AI model entries below are intentionally commented out. PhotoChron does
+# NOT ship with a hardcoded default model. You must:
+#   1. Verify the license of each model for your intended use (private family
+#      archive, personal research, etc.). Licenses change; check the current
+#      terms from the model's authors.
+#   2. Uncomment exactly the lines you want to activate.
+# If no model is configured, `photochron run` will refuse to start with a
+# message that points back here.
+#
+# Reference links (verify before use):
+#   - InsightFace buffalo_l:  https://github.com/deepinsight/insightface
+#   - Ollama llava-next:7b:    https://ollama.com/library/llava
+#   - Ollama moondream2:       https://ollama.com/library/moondream
+# ---------------------------------------------------------------------------
 
 version: "1.0"
 
 paths:
   # Directory for cache and database
   cache_dir: ".photochron"
-  # Directory for downsampled thumbnails  
+  # Directory for downsampled thumbnails
   thumbs_dir: ".photochron/thumbs"
   # Directory for output files
   output_dir: "photochron_output"
 
 models:
-  # InsightFace model version (buffalo_l recommended for historical photos)
-  insightface_version: "buffalo_l"
-  # Ollama vision LLM model (llava-next:7b via MLX backend)
-  ollama_model: "llava-next:7b"
-  # Fallback vision model (moondream2 is smaller and faster)
-  fallback_model: "moondream2"
-  # Maximum image size for processing (longest edge in pixels)
-  # Images are downsampled to this size before any inference
+  # Uncomment after license review. Empty string = not configured.
+  # insightface_version: "buffalo_l"
+  # ollama_model: "llava-next:7b"
+  # fallback_model: "moondream2"
   max_image_size: 1024
 
 ingestion:
-  # Maximum size for downsampled images (longest edge in pixels)
-  # Images larger than this will be resized preserving aspect ratio
   max_downsample_size: 1024
-  # Supported image file extensions (case-insensitive)
   supported_formats:
     - ".jpg"
     - ".jpeg"
@@ -37,61 +46,49 @@ ingestion:
     - ".nef"
     - ".arw"
     - ".dng"
-  # Whether to skip duplicate files (same content hash)
   skip_duplicates: true
-  # Whether to extract GPS coordinates from EXIF
-  extract_gps: true
-  # Fallback timestamp source when EXIF missing
-  # Options: "file_mtime", "file_ctime", "user_default"
+  # GPS extraction is opt-in. Family photos are private by default and GPS
+  # can de-anonymize locations when reports or EXIF-enriched copies are shared.
+  extract_gps: false
   fallback_timestamp: "file_mtime"
 
 face:
-  # InsightFace model name (buffalo_l, buffalo_s, etc.)
-  model_name: "buffalo_l"
-  # Minimum confidence score for face detection (0.0-1.0)
+  # Uncomment after license review.
+  # model_name: "buffalo_l"
   detection_threshold: 0.5
-  # Cosine similarity threshold for person matching (0.0-1.0)
   matching_threshold: 0.6
-  # Scale factor for age estimation standard deviation
   age_confidence_scale: 0.1
-  # Whether to use GPU acceleration (if available)
   use_gpu: false
-  # Batch size for face detection (higher values may improve GPU utilization)
   batch_size: 1
 
 context:
-  # Ollama server connection settings
   ollama_host: "http://localhost:11434"
   ollama_timeout: 300  # 5 minutes for vision LLM inference
-  # Retry settings for LLM failures
   max_retries: 3
   retry_delay: 2.0  # seconds
-  # Model selection
-  primary_model: "llava-next:7b"
-  fallback_model: "moondream2"
-  # Processing settings
-  batch_size: 1  # Process images one at a time (LLM memory constraints)
-  # Confidence thresholds
-  min_decade_confidence: 0.3  # Minimum confidence to accept decade estimate
-  min_season_confidence: 0.4  # Minimum confidence to accept season
-  # Fallback behavior
+  # Uncomment after license review.
+  # primary_model: "llava-next:7b"
+  # fallback_model: "moondream2"
+  batch_size: 1
+  min_decade_confidence: 0.3
+  min_season_confidence: 0.4
   use_fallback_on_failure: true
-  store_minimal_on_complete_failure: true  # Store minimal data even if analysis fails
+  store_minimal_on_complete_failure: true
 
 pipeline:
-  # Weight for face age estimates in final ranking (0.0-1.0)
   face_age_weight: 0.45
-  # Weight for LLM decade estimates in final ranking (0.0-1.0)
   llm_decade_weight: 0.30
-  # Weight for photo medium priors in final ranking (0.0-1.0)
   photo_medium_weight: 0.10
-  # Minimum confidence threshold (0.0-1.0)
-  # Results below this threshold are flagged for review
   min_confidence_threshold: 0.5
-  # Maximum number of pairwise LLM comparisons per run
-  # Limits computational cost for ambiguous photo pairs
   max_pairwise_comparisons: 500
 
-# Note: Environment variables can override any value
-# Format: PHOTOCHRON_<SECTION>_<KEY>
-# Example: PHOTOCHRON_MODELS_MAX_IMAGE_SIZE=2048
+# Environment variable overrides
+# ---------------------------------------------------------------------------
+# Any field above can be overridden via `PHOTOCHRON_<SECTION>_<KEY>`.
+# Section names are case-insensitive; multi-word keys keep their underscores.
+# Examples:
+#   PHOTOCHRON_CONTEXT_OLLAMA_HOST=http://ollama:11434
+#   PHOTOCHRON_FACE_USE_GPU=true
+#   PHOTOCHRON_MODELS_MAX_IMAGE_SIZE=2048
+# This makes it straightforward to run PhotoChron in a container where the
+# Ollama service or cache paths differ from the host defaults.

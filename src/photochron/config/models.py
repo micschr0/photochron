@@ -14,11 +14,15 @@ class ConfigPaths(BaseModel):
 
 
 class ConfigModels(BaseModel):
-    """AI model configuration."""
+    """AI model configuration.
 
-    insightface_version: str = Field("buffalo_l", description="InsightFace model version")
-    ollama_model: str = Field("llava-next:7b", description="Ollama vision LLM model")
-    fallback_model: str = Field("moondream2", description="Fallback vision model")
+    Model names are not hardcoded – users must explicitly configure them in
+    config.yaml and verify model licenses for their intended use.
+    """
+
+    insightface_version: str = Field("", description="InsightFace model version (opt-in, see config.yaml)")
+    ollama_model: str = Field("", description="Ollama vision LLM model (opt-in, see config.yaml)")
+    fallback_model: str = Field("", description="Fallback vision model (opt-in, see config.yaml)")
     max_image_size: int = Field(
         1024,
         ge=256,
@@ -75,8 +79,12 @@ class ConfigIngestion(BaseModel):
         description="Whether to skip duplicate files (same content hash)",
     )
     extract_gps: bool = Field(
-        True,
-        description="Whether to extract GPS coordinates from EXIF",
+        False,
+        description=(
+            "Whether to extract GPS coordinates from EXIF. "
+            "Default False: family photos are intended as private and GPS "
+            "can de-anonymize locations when reports are shared."
+        ),
     )
     fallback_timestamp: str = Field(
         "file_mtime",
@@ -88,8 +96,8 @@ class ConfigFace(BaseModel):
     """Face layer configuration."""
 
     model_name: str = Field(
-        "buffalo_l",
-        description="InsightFace model name (buffalo_l, buffalo_s, etc.)",
+        "",
+        description="InsightFace model name (opt-in, see config.yaml; verify license)",
     )
     detection_threshold: float = Field(
         0.5,
@@ -144,12 +152,12 @@ class ConfigContext(BaseModel):
         description="Delay between retries in seconds",
     )
     primary_model: str = Field(
-        "llava-next:7b",
-        description="Primary vision LLM model",
+        "",
+        description="Primary vision LLM model (opt-in, see config.yaml; verify license)",
     )
     fallback_model: str = Field(
-        "moondream2",
-        description="Fallback vision model",
+        "",
+        description="Fallback vision model (opt-in, see config.yaml; verify license)",
     )
     batch_size: int = Field(
         1,
@@ -266,7 +274,26 @@ class Config(BaseModel):
     context: ConfigContext = Field(default_factory=ConfigContext)
     logging: ConfigLogging = Field(default_factory=ConfigLogging)
 
+    input_dir: str | None = Field(
+        None,
+        description="Runtime input directory (set by PipelineRunner, not persisted).",
+    )
+    dry_run: bool = Field(
+        False,
+        description="Runtime dry-run flag (set by PipelineRunner, not persisted).",
+    )
+
     model_config = ConfigDict(
-        extra="forbid",  # Prevent extra fields
+        extra="forbid",
         validate_assignment=True,
     )
+
+    @property
+    def cache_dir(self) -> str:
+        """Convenience accessor; delegates to paths.cache_dir."""
+        return self.paths.cache_dir
+
+    @property
+    def output_dir(self) -> str:
+        """Convenience accessor; delegates to paths.output_dir."""
+        return self.paths.output_dir

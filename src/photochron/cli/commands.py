@@ -6,9 +6,16 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 console = Console()
+
+
+def _print_privacy_banner() -> None:
+    """Remind users that PhotoChron is intended for private family photos."""
+    console.print(
+        "[yellow]PhotoChron is intended for private family photos. "
+        "Treat EXIF data (and any GPS coordinates you enable) as sensitive.[/yellow]"
+    )
 
 
 def run(
@@ -49,51 +56,42 @@ def run(
 
     config = get_config()
 
-    # Set default output directory if not provided
     if output_dir is None:
         output_dir = Path(config.paths.output_dir)
 
-    # Create output directory if it doesn't exist (unless dry run)
     if not dry_run:
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Show pipeline configuration
+    _print_privacy_banner()
     console.print("[bold]PhotoChron Pipeline[/bold]")
     console.print(f"  Input directory: {input_dir}")
     console.print(f"  Output directory: {output_dir}")
     console.print(f"  Dry run: {'Yes' if dry_run else 'No'}")
     console.print()
 
-    # TODO: Implement actual pipeline execution
-    # For now, just show a mock progress
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Initializing pipeline...", total=None)
+    if dry_run:
+        # Dry-run shows the plan without touching disk or loading heavy models.
+        console.print("[dim]Dry run – skipping pipeline execution. Remove --dry-run to run the real pipeline.[/dim]")
+        return
 
-        # Simulate pipeline stages
-        stages = [
-            "Ingestion",
-            "Face Layer",
-            "Context Layer",
-            "Anchor Layer",
-            "Ranking Engine",
-            "Output Layer",
-        ]
+    # Import late so CLI help/dry-run paths stay cheap (pipeline pulls heavy deps).
+    # Importing the stages package triggers @register_stage for all 6 stages.
+    import photochron.pipeline.stages  # noqa: F401
+    from photochron.pipeline import PipelineConfigurationError, PipelineRunner
 
-        for i, stage in enumerate(stages):
-            progress.update(task, description=f"Running {stage}...")
-            # Simulate work
-            import time
+    try:
+        runner = PipelineRunner()
+        run_id = runner.run_pipeline(
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            dry_run=False,
+        )
+    except PipelineConfigurationError as e:
+        console.print(f"[red]Configuration error:[/red] {e}")
+        raise typer.Exit(2) from e
 
-            time.sleep(0.5)
-
-        progress.update(task, description="Pipeline complete!")
-
-    console.print("\n[green]✓[/green] Pipeline execution completed")
-    console.print(f"  [dim]Output ready in: {output_dir}[/dim]")
+    console.print(f"\n[green]✓[/green] Pipeline run completed: {run_id}")
+    console.print(f"  [dim]Output in: {output_dir}[/dim]")
 
 
 def cluster(

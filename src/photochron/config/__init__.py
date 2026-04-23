@@ -63,7 +63,11 @@ def load_config(config_path: Path | None = None) -> Config:
 
 
 def _create_default_config() -> Config:
-    """Create default configuration based on architecture specification."""
+    """Create default configuration when no config.yaml exists.
+
+    Model names are intentionally left empty – users must opt in by
+    uncommenting model entries in config.yaml (with license verification).
+    """
     return Config(
         version="1.0",
         paths=ConfigPaths(
@@ -71,12 +75,7 @@ def _create_default_config() -> Config:
             thumbs_dir=".photochron/thumbs",
             output_dir="photochron_output",
         ),
-        models=ConfigModels(
-            insightface_version="buffalo_l",
-            ollama_model="llava-next:7b",
-            fallback_model="moondream2",
-            max_image_size=1024,
-        ),
+        models=ConfigModels(max_image_size=1024),
         ingestion=ConfigIngestion(
             max_downsample_size=1024,
             supported_formats=[
@@ -91,11 +90,10 @@ def _create_default_config() -> Config:
                 ".dng",
             ],
             skip_duplicates=True,
-            extract_gps=True,
+            extract_gps=False,
             fallback_timestamp="file_mtime",
         ),
         face=ConfigFace(
-            model_name="buffalo_l",
             detection_threshold=0.5,
             matching_threshold=0.6,
             age_confidence_scale=0.1,
@@ -113,49 +111,61 @@ def _create_default_config() -> Config:
     )
 
 
+# Top-level config sections (used for env-var parsing to correctly split
+# section names from multi-word keys like `ollama_host`).
+_CONFIG_SECTIONS = (
+    "paths",
+    "models",
+    "ingestion",
+    "face",
+    "pipeline",
+    "context",
+    "logging",
+)
+
+
 def _apply_env_overrides(config_data: dict[str, Any]) -> dict[str, Any]:
     """
     Apply environment variable overrides to configuration.
 
     Environment variables follow the pattern:
-    PHOTOCHRON_<SECTION>_<KEY> (uppercase with underscores)
+    PHOTOCHRON_<SECTION>_<KEY> where <KEY> may contain underscores.
 
-    Example: PHOTOCHRON_MODELS_MAX_IMAGE_SIZE=2048
+    Examples:
+        PHOTOCHRON_MODELS_MAX_IMAGE_SIZE=2048  -> models.max_image_size
+        PHOTOCHRON_CONTEXT_OLLAMA_HOST=http://x -> context.ollama_host
+        PHOTOCHRON_FACE_USE_GPU=true           -> face.use_gpu
     """
     prefix = "PHOTOCHRON_"
 
-    for env_key, env_value in os.environ.items():
+    for env_key, raw_value in os.environ.items():
         if not env_key.startswith(prefix):
             continue
 
-        # Convert PHOTOCHRON_MODELS_MAX_IMAGE_SIZE -> models.max_image_size
-        parts = env_key[len(prefix) :].lower().split("_")
+        rest = env_key[len(prefix) :].lower()
 
-        # Navigate through nested structure
-        current = config_data
-        for part in parts[:-1]:
-            if part not in current:
-                current[part] = {}
-            current = current[part]
+        # Match known section prefix so multi-word keys stay intact.
+        section = next((s for s in _CONFIG_SECTIONS if rest.startswith(s + "_")), None)
+        if section is None:
+            # Unknown section – skip silently rather than corrupting config_data.
+            continue
+        key = rest[len(section) + 1 :]
+        if not key:
+            continue
 
-        # Set value with type conversion
-        final_key = parts[-1]
+        converted: Any = raw_value
         try:
-            # Try to convert to int
-            env_value = int(env_value)
+            converted = int(raw_value)
         except ValueError:
             try:
-                # Try to convert to float
-                env_value = float(env_value)
+                converted = float(raw_value)
             except ValueError:
-                # Try to convert to boolean
-                if env_value.lower() in ("true", "yes", "1"):
-                    env_value = True
-                elif env_value.lower() in ("false", "no", "0"):
-                    env_value = False
-                # Otherwise keep as string
+                if raw_value.lower() in ("true", "yes", "1"):
+                    converted = True
+                elif raw_value.lower() in ("false", "no", "0"):
+                    converted = False
 
-        current[final_key] = env_value
+        config_data.setdefault(section, {})[key] = converted
 
     return config_data
 

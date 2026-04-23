@@ -158,9 +158,9 @@ class TestIngestionStage:
 
     @patch("photochron.pipeline.stages.ingestion.piexif")
     def test_extract_exif_metadata_fallback(self, mock_piexif, stage, tmp_path):
-        """Test EXIF extraction fallback to file mtime when piexif fails."""
-        # Make piexif raise an exception
-        mock_piexif.load.side_effect = Exception("No EXIF")
+        """Test EXIF extraction fallback to Pillow when piexif fails."""
+        # ValueError is one of the specific exception types the stage catches.
+        mock_piexif.load.side_effect = ValueError("No EXIF")
 
         # Create a temporary file to get mtime
         test_file = tmp_path / "test.jpg"
