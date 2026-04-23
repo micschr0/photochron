@@ -11,8 +11,11 @@ import math
 import os
 import random
 import re
+import threading
 import time
-from dataclasses import dataclass
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -234,6 +237,41 @@ class OllamaConfig:
     jitter_percentage: float = 0.2  # ±20% random variation for retry delays
     primary_model: ModelType = ModelType.LLAVA_NEXT_7B
     fallback_model: ModelType = ModelType.MOONDREAM2
+    # Performance / Apple-Silicon tuning – mirrored from ConfigContext.
+    keep_alive: str = "30m"
+    num_ctx: int = 2048
+    num_gpu: int = -1
+    model_options: dict[str, dict[str, Any]] = field(default_factory=dict)
+    heartbeat_interval: float = 5.0  # seconds between "still working" log lines
+
+
+@contextmanager
+def _heartbeat(message: str, interval: float) -> Iterator[None]:
+    """Emit periodic "still working" log lines while a blocking call runs.
+
+    The Ollama Python SDK's `generate` is synchronous – on Apple Silicon a
+    single llava-next:7b call can take several seconds. Without feedback the
+    CLI appears frozen. A daemon thread ticks every ``interval`` seconds and
+    reports the elapsed time so the user can see progress continuously.
+    """
+    if interval <= 0:
+        yield
+        return
+    stop = threading.Event()
+    start = time.monotonic()
+
+    def _tick() -> None:
+        while not stop.wait(interval):
+            elapsed = time.monotonic() - start
+            logger.info(f"{message} (still working, {elapsed:.1f}s elapsed)")
+
+    thread = threading.Thread(target=_tick, name="ollama-heartbeat", daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        thread.join(timeout=interval + 0.2)
 
 
 class OllamaClient:
@@ -243,6 +281,30 @@ class OllamaClient:
         self.config = config or OllamaConfig()
         self._client = None
         self._available_models: list[str] = []
+
+    def _resolve_generate_kwargs(self, model_name: str) -> tuple[dict[str, Any], str]:
+        """Merge global Ollama defaults with per-model overrides.
+
+        Returns the `options` dict suitable for ``ollama.generate`` together
+        with the resolved ``keep_alive`` value (which is a top-level kwarg on
+        the Ollama SDK, not an options field).
+        """
+        per_model = self.config.model_options.get(model_name, {})
+        options: dict[str, Any] = {
+            "temperature": 0.1,  # low for deterministic JSON
+            "num_predict": 500,
+            "num_ctx": self.config.num_ctx,
+            "num_gpu": self.config.num_gpu,
+        }
+        # Per-model override shadows globals. 'keep_alive' is pulled out
+        # because Ollama takes it at the top level.
+        keep_alive = self.config.keep_alive
+        for key, value in per_model.items():
+            if key == "keep_alive":
+                keep_alive = value
+            else:
+                options[key] = value
+        return options, keep_alive
 
     def connect(self) -> bool:
         """Connect to Ollama server and check availability."""
@@ -528,19 +590,23 @@ class OllamaClient:
         consecutive_timeouts = 0
         max_consecutive_timeouts = 2
 
+        options, keep_alive = self._resolve_generate_kwargs(model_name)
+
         for attempt in range(self.config.max_retries):
             try:
                 logger.debug(f"Analyzing {log_image_info} with model {model_name} (attempt {attempt + 1})")
 
-                response = ollama.generate(
-                    model=model_name,
-                    prompt=prompt,
-                    images=[prepared_image],
-                    options={
-                        "temperature": 0.1,  # Low temperature for consistent JSON
-                        "num_predict": 500,  # Limit response length
-                    },
-                )
+                with _heartbeat(
+                    f"Analyzing {log_image_info} via {model_name}",
+                    interval=self.config.heartbeat_interval,
+                ):
+                    response = ollama.generate(
+                        model=model_name,
+                        prompt=prompt,
+                        images=[prepared_image],
+                        options=options,
+                        keep_alive=keep_alive,
+                    )
 
                 result_text = response.get("response", "").strip()
                 logger.debug(f"Raw LLM response: {result_text}")

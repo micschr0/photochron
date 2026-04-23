@@ -97,7 +97,6 @@ def _create_default_config() -> Config:
             detection_threshold=0.5,
             matching_threshold=0.6,
             age_confidence_scale=0.1,
-            use_gpu=False,
             batch_size=1,
         ),
         pipeline=ConfigPipeline(

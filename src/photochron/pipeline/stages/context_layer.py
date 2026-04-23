@@ -47,7 +47,10 @@ class ContextLayerStage(PipelineStage):
             primary_model_type = ModelType.LLAVA_NEXT_7B
             fallback_model_type = ModelType.MOONDREAM2
 
-        # Create Ollama configuration from context settings
+        # Create Ollama configuration from context settings. The tuning
+        # fields (keep_alive / num_ctx / num_gpu / model_options) feed the
+        # Apple-Silicon-Metal path in ollama.generate(); without them llama.cpp
+        # reloads the model between photos and ignores available Metal layers.
         ollama_config = OllamaConfig(
             host=self.context_config.ollama_host,
             timeout=self.context_config.ollama_timeout,
@@ -55,6 +58,10 @@ class ContextLayerStage(PipelineStage):
             retry_delay=self.context_config.retry_delay,
             primary_model=primary_model_type,
             fallback_model=fallback_model_type,
+            keep_alive=self.context_config.keep_alive,
+            num_ctx=self.context_config.num_ctx,
+            num_gpu=self.context_config.num_gpu,
+            model_options=dict(self.context_config.model_options),
         )
 
         # Create ContextAnalyzer configuration with model priority based on availability

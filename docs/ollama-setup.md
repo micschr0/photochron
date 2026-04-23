@@ -1,10 +1,10 @@
 # Ollama Setup
 
-PhotoChron's Context Layer uses a local [Ollama](https://ollama.com) server for vision LLM inference. Nothing is sent to external services — model weights run on your machine (CPU or local GPU/MLX). This document covers installation, model pulls, verification, and common issues.
+PhotoChron's Context Layer uses a local [Ollama](https://ollama.com) server for vision LLM inference. Nothing is sent to external services — model weights run on your machine. On Apple Silicon, Ollama uses Metal via llama.cpp; on Linux/Windows it uses CUDA or CPU depending on what Ollama detects. This document covers installation, model pulls, verification, and common issues.
 
 ## Install Ollama
 
-### macOS (Apple Silicon recommended; MLX-accelerated)
+### macOS (Apple Silicon recommended; Metal-accelerated via llama.cpp)
 
 ```bash
 brew install ollama

@@ -38,7 +38,8 @@ def test_face_layer_basic_integration(database_store, monkeypatch):
     mock_config.face.detection_threshold = 0.5
     mock_config.face.matching_threshold = 0.6
     mock_config.face.age_confidence_scale = 0.1
-    mock_config.face.use_gpu = False
+    mock_config.face.use_gpu = None
+    mock_config.face.backend = "cpu"
     mock_config.face.batch_size = 1
 
     monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
@@ -127,7 +128,8 @@ def test_duplicate_detection(database_store, monkeypatch):
     mock_config.face.detection_threshold = 0.5
     mock_config.face.matching_threshold = 0.6
     mock_config.face.age_confidence_scale = 0.1
-    mock_config.face.use_gpu = False
+    mock_config.face.use_gpu = None
+    mock_config.face.backend = "cpu"
     mock_config.face.batch_size = 1
 
     monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
@@ -194,7 +196,8 @@ def test_configuration_thresholds(database_store, monkeypatch):
     mock_config.face.detection_threshold = 0.9  # High threshold
     mock_config.face.matching_threshold = 0.6
     mock_config.face.age_confidence_scale = 0.1
-    mock_config.face.use_gpu = False
+    mock_config.face.use_gpu = None
+    mock_config.face.backend = "cpu"
     mock_config.face.batch_size = 1
 
     monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
@@ -267,7 +270,8 @@ def test_no_faces_detected(database_store, monkeypatch):
     mock_config.face.detection_threshold = 0.5
     mock_config.face.matching_threshold = 0.6
     mock_config.face.age_confidence_scale = 0.1
-    mock_config.face.use_gpu = False
+    mock_config.face.use_gpu = None
+    mock_config.face.backend = "cpu"
     mock_config.face.batch_size = 1
 
     monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)
@@ -338,7 +342,8 @@ def test_person_matching(database_store, monkeypatch):
     mock_config.face.detection_threshold = 0.5
     mock_config.face.matching_threshold = 0.6  # Matching threshold
     mock_config.face.age_confidence_scale = 0.1
-    mock_config.face.use_gpu = False
+    mock_config.face.use_gpu = None
+    mock_config.face.backend = "cpu"
     mock_config.face.batch_size = 1
 
     monkeypatch.setattr("photochron.pipeline.stages.face_layer.get_config", lambda: mock_config)

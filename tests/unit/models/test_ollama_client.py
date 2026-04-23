@@ -1005,3 +1005,59 @@ This is based on the fashion and technology visible in the image."""
             assert mock_ollama.generate.call_count == 2, (
                 f"Should call generate exactly 2 times, but called {mock_ollama.generate.call_count} times"
             )
+
+
+class TestResolveGenerateKwargs:
+    """Lock in the merge behavior of global Ollama options with per-model overrides."""
+
+    def _client(self, **overrides):
+        base = {
+            "host": "http://localhost:11434",
+            "timeout": 300,
+            "max_retries": 1,
+            "retry_delay": 0.0,
+            "primary_model": ModelType.LLAVA_NEXT_7B,
+            "fallback_model": ModelType.MOONDREAM2,
+        }
+        base.update(overrides)
+        return OllamaClient(config=OllamaConfig(**base))
+
+    def test_defaults_forwarded_into_options(self):
+        client = self._client()
+        options, keep_alive = client._resolve_generate_kwargs("llava-next:7b")
+        assert options["num_ctx"] == 2048
+        assert options["num_gpu"] == -1
+        assert options["temperature"] == 0.1
+        assert options["num_predict"] == 500
+        assert keep_alive == "30m"
+
+    def test_per_model_override_shadows_globals(self):
+        client = self._client(
+            num_ctx=2048,
+            keep_alive="30m",
+            model_options={
+                "moondream2": {"num_ctx": 1024, "keep_alive": "1h"},
+            },
+        )
+        options, keep_alive = client._resolve_generate_kwargs("moondream2")
+        assert options["num_ctx"] == 1024
+        assert keep_alive == "1h"
+
+    def test_non_overridden_model_uses_globals(self):
+        client = self._client(
+            num_ctx=4096,
+            keep_alive="-1",
+            model_options={"moondream2": {"num_ctx": 1024}},
+        )
+        options, keep_alive = client._resolve_generate_kwargs("llava-next:7b")
+        assert options["num_ctx"] == 4096
+        assert keep_alive == "-1"
+
+    def test_unknown_override_key_passed_through_to_options(self):
+        # Ollama accepts many options (top_p, seed, etc.); we must not filter them.
+        client = self._client(
+            model_options={"llava-next:7b": {"top_p": 0.9, "seed": 42}},
+        )
+        options, _ = client._resolve_generate_kwargs("llava-next:7b")
+        assert options["top_p"] == 0.9
+        assert options["seed"] == 42

@@ -36,7 +36,14 @@ PhotoChron uses a hierarchical configuration system with sensible defaults. Conf
 - `detection_threshold`: Minimum confidence for face detection (0.0-1.0, default: `0.5`)
 - `matching_threshold`: Cosine similarity threshold for person matching (0.0-1.0, default: `0.6`)
 - `age_confidence_scale`: Scale factor for age estimation standard deviation (default: `0.1`)
-- `use_gpu`: Whether to use GPU acceleration (default: `false`)
+- `backend`: ONNX Runtime execution backend (default: `"auto"`). One of:
+  - `"auto"` – CoreML on arm64 macOS (Apple Silicon), CPU elsewhere
+  - `"cpu"` – always CPU (works everywhere)
+  - `"cuda"` – NVIDIA GPU via the CUDA EP (requires a CUDA-enabled `onnxruntime` build)
+  - `"coreml"` – Apple Neural Engine / Metal via CoreML EP (errors out on non-Apple-Silicon hosts with a CPU fallback + warning)
+
+  Run `photochron doctor` to see which providers ONNX Runtime actually exposes on your host and how `"auto"` is resolved.
+- `use_gpu`: **Deprecated.** Prefer `backend`. Setting `use_gpu: true` while leaving `backend` at `"auto"` is migrated to `backend: "cuda"` for backward compatibility.
 - `batch_size`: Batch size for face detection (default: `1`)
 
 ### Pipeline Configuration (`ConfigPipeline`)
@@ -62,6 +69,27 @@ The context layer configuration provides comprehensive settings for Ollama integ
 - `retry_delay`: Delay between retries in seconds (default: `2.0`)
 - `use_fallback_on_failure`: Use fallback strategies on analysis failure (default: `true`)
 - `store_minimal_on_complete_failure`: Store minimal data when analysis completely fails (default: `true`)
+
+#### Ollama Runtime Tuning (Apple Silicon / performance)
+These fields are forwarded directly to `ollama.generate(...)`. Tuning them is the single biggest Apple-Silicon throughput win.
+
+- `keep_alive`: Duration string (`"30m"`, `"1h"`, `"-1"` for forever) controlling how long Ollama holds the model in memory between photos. Default: `"30m"`. Without a long `keep_alive`, Ollama reloads the ~5 GB llava-next weights every few minutes of idle time, wiping any speedup from Metal.
+- `num_ctx`: Context-window size in tokens (default: `2048`). Lower values reduce Metal memory pressure on 8–16 GB machines; raise only if your prompts or outputs get truncated.
+- `num_gpu`: Number of model layers to offload to the GPU. `-1` (default) means auto — on Apple Silicon this puts all layers on Metal. Set to `0` to force CPU.
+- `model_options`: Per-model overrides as a nested mapping. Useful when a lighter fallback model (e.g. `moondream2`) can use a smaller context:
+  ```yaml
+  context:
+    num_ctx: 2048
+    keep_alive: "30m"
+    model_options:
+      moondream2:
+        num_ctx: 1024
+      "llava-next:7b":
+        keep_alive: "1h"
+  ```
+  Any key supported by Ollama's `options` dict works; `keep_alive` is handled as a special top-level override.
+
+During long generations the CLI now logs a heartbeat line every ~5s so the terminal does not appear frozen while the model is working.
 
 #### Memory Management
 - `memory_warning_threshold_mb`: Memory warning threshold in MB. Logs warning if available memory falls below this value. Must be greater than `memory_critical_threshold_mb`. (default: `100`, range: 10-10000)

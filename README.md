@@ -75,17 +75,19 @@ Photos flagged with low confidence end up in `review_needed = true` in `photochr
 
 ## ⚠️ Alpha status
 
-PhotoChron is in **early alpha**. The following CLI commands are currently **demo stubs** and do not yet execute the full pipeline:
+PhotoChron is in **early alpha**:
 
-- `photochron run` — simulates pipeline progress (no real processing)
-- `photochron cluster` — placeholder
-- `photochron rerun` — placeholder
+- `photochron run` is wired to the real 6-stage pipeline (with `--dry-run` short-circuit). Requires a configured AI model — see the license-verification block in `config.yaml`; model entries are commented out by default and must be uncommented explicitly.
+- `photochron status` reads the SQLite feature store.
+- `photochron cluster` and `photochron rerun` are still placeholders — see `docs/CHANGELOG.md` for the rollout plan.
 
-The `photochron status` command is functional and reads the SQLite feature store. The underlying pipeline modules (`src/photochron/pipeline/`, `src/photochron/context/`, `src/photochron/face/`, etc.) are implemented and unit-tested, but not yet wired into the CLI. Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
 ## Installation
+
+> **Platform note:** PhotoChron has been developed and tested exclusively on **Apple Silicon** (macOS, M-series). The code is plain Python and should run on Linux/Windows too, but those paths are not verified. If you run it elsewhere, please file issues with what worked and what didn't.
 
 Requires **Python 3.12+** and [Ollama](https://ollama.com) (for the local vision LLM).
 

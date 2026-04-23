@@ -58,7 +58,14 @@ face:
   detection_threshold: 0.5
   matching_threshold: 0.6
   age_confidence_scale: 0.1
-  use_gpu: false
+  # ONNX Runtime execution backend for InsightFace:
+  #   auto   – CoreML on arm64 macOS (Apple Silicon), CPU elsewhere
+  #   cpu    – always available
+  #   cuda   – requires NVIDIA GPU + CUDA-enabled onnxruntime
+  #   coreml – force Apple Neural Engine / Metal (errors on non-Apple Silicon)
+  backend: "auto"
+  # use_gpu: legacy flag – prefer 'backend' above. If set to `true` and
+  # 'backend' stays 'auto', it is migrated to 'cuda' for backward compat.
   batch_size: 1
 
 context:
@@ -74,6 +81,25 @@ context:
   min_season_confidence: 0.4
   use_fallback_on_failure: true
   store_minimal_on_complete_failure: true
+
+  # Ollama runtime tuning (biggest single win for Apple-Silicon throughput).
+  # keep_alive: how long Ollama keeps the model resident between calls. Setting
+  # this high avoids the ~10–30s reload cost for every photo. "-1" = forever.
+  keep_alive: "30m"
+  # Context window. 2048 tokens is comfortably enough for our short prompts
+  # and a bounded 500-token response; lower values save Metal memory on
+  # machines with 8–16 GB unified memory.
+  num_ctx: 2048
+  # Number of GPU layers for Ollama. -1 = auto (all layers on Metal on Apple
+  # Silicon). Set to 0 to force CPU.
+  num_gpu: -1
+  # Per-model override of any of the above. Keys are model names (as typed in
+  # `ollama list`). Example: let the lighter moondream2 use a smaller ctx.
+  # model_options:
+  #   moondream2:
+  #     num_ctx: 1024
+  #   "llava-next:7b":
+  #     keep_alive: "1h"
 
 pipeline:
   face_age_weight: 0.45

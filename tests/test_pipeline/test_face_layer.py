@@ -31,7 +31,8 @@ class TestFaceLayerStage:
             mock_config.face.detection_threshold = 0.5
             mock_config.face.matching_threshold = 0.6
             mock_config.face.age_confidence_scale = 0.1
-            mock_config.face.use_gpu = False
+            mock_config.face.use_gpu = None
+            mock_config.face.backend = "cpu"
             mock_config.face.batch_size = 1
             mock_get_config.return_value = mock_config
 

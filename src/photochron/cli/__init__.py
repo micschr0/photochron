@@ -7,7 +7,7 @@ from typing import Optional
 
 import typer
 
-from .commands import cluster, rerun, run, status
+from .commands import cluster, doctor, rerun, run, status
 
 # Create Typer app
 app = typer.Typer(
@@ -21,6 +21,7 @@ app.command(name="run", help="Run full pipeline on input directory")(run)
 app.command(name="cluster", help="Face clustering and person assignment")(cluster)
 app.command(name="rerun", help="Re-run specific pipeline stage")(rerun)
 app.command(name="status", help="Show pipeline progress and cache stats")(status)
+app.command(name="doctor", help="Diagnose the PhotoChron environment (read-only)")(doctor)
 
 
 @app.callback(invoke_without_command=True)

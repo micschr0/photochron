@@ -2,6 +2,8 @@
 Pydantic models for PhotoChron configuration.
 """
 
+from typing import Any, Literal
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -92,6 +94,9 @@ class ConfigIngestion(BaseModel):
     )
 
 
+FaceBackend = Literal["auto", "cpu", "cuda", "coreml"]
+
+
 class ConfigFace(BaseModel):
     """Face layer configuration."""
 
@@ -117,9 +122,21 @@ class ConfigFace(BaseModel):
         le=1.0,
         description="Scale factor for age estimation standard deviation",
     )
-    use_gpu: bool = Field(
-        False,
-        description="Whether to use GPU acceleration (if available)",
+    backend: FaceBackend = Field(
+        "auto",
+        description=(
+            "ONNX Runtime execution backend for InsightFace. "
+            "'auto' picks CoreML on arm64 macOS and CPU elsewhere. "
+            "'coreml' uses the Apple Neural Engine; 'cuda' needs an NVIDIA GPU; "
+            "'cpu' is always available."
+        ),
+    )
+    use_gpu: bool | None = Field(
+        None,
+        description=(
+            "Deprecated. Prefer 'backend'. If set to true and 'backend' is 'auto', "
+            "backend is upgraded to 'cuda' for backward compatibility."
+        ),
     )
     batch_size: int = Field(
         1,
@@ -127,6 +144,15 @@ class ConfigFace(BaseModel):
         le=64,
         description="Batch size for face detection (higher values may improve GPU utilization)",
     )
+
+    @model_validator(mode="after")
+    def _migrate_use_gpu(self) -> "ConfigFace":
+        """Soft-migration of legacy ``use_gpu: true`` configs to ``backend: 'cuda'``."""
+        if self.use_gpu is True and self.backend == "auto":
+            self.backend = "cuda"
+        # Keep the value around so users can still read their config back; we
+        # only normalise it when it would conflict with an explicit backend.
+        return self
 
 
 class ConfigContext(BaseModel):
@@ -183,6 +209,42 @@ class ConfigContext(BaseModel):
     store_minimal_on_complete_failure: bool = Field(
         True,
         description="Store minimal data when analysis completely fails",
+    )
+    keep_alive: str = Field(
+        "30m",
+        description=(
+            "Ollama `keep_alive` — how long to keep the model in memory between "
+            "requests. Accepts a duration string ('30s', '10m', '1h') or '-1' "
+            "for 'forever'. Setting this prevents expensive model reloads "
+            "between photos on resource-constrained machines."
+        ),
+    )
+    num_ctx: int = Field(
+        2048,
+        ge=512,
+        le=32768,
+        description=(
+            "Ollama `options.num_ctx` — context window size (tokens). "
+            "Lowering reduces Metal/GPU memory pressure and speeds up inference "
+            "on Apple Silicon; raise only if prompts/outputs get truncated."
+        ),
+    )
+    num_gpu: int = Field(
+        -1,
+        ge=-1,
+        description=(
+            "Ollama `options.num_gpu` — number of layers to offload to GPU. "
+            "-1 = auto (Ollama decides). On Apple Silicon this means all layers "
+            "on Metal. Set 0 to force CPU."
+        ),
+    )
+    model_options: dict[str, dict[str, Any]] = Field(
+        default_factory=dict,
+        description=(
+            "Per-model override of Ollama options. Keys match the model name "
+            "(e.g. 'moondream2'); values are partial options dicts that shadow "
+            "the globals above. Supports 'keep_alive' as a special key."
+        ),
     )
     memory_warning_threshold_mb: int = Field(
         100,
