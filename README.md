@@ -128,6 +128,7 @@ See [docs/configuration.md](docs/configuration.md) for all options.
 - [Pipeline architecture](docs/pipeline.md) — detailed 6-stage walkthrough
 - [Configuration reference](docs/configuration.md) — all `config.yaml` options
 - [Ollama setup](docs/ollama-setup.md) — installing the local vision LLM
+- [Performance tuning & benchmarks](docs/performance.md) — Apple-Silicon knobs, `photochron doctor`, `scripts/bench.py`
 - [Testing](docs/testing.md) — test suite layout and conventions
 - [Changelog](docs/CHANGELOG.md)
 
