@@ -51,6 +51,11 @@ ingestion:
   # can de-anonymize locations when reports or EXIF-enriched copies are shared.
   extract_gps: false
   fallback_timestamp: "file_mtime"
+  # Number of concurrent workers that decode images and extract EXIF.
+  # Ingestion is I/O- and decode-bound, so 4 workers give near-linear
+  # speed-up on most laptops. Set to 1 for deterministic single-threaded
+  # debugging.
+  workers: 4
 
 face:
   # Uncomment after license review.

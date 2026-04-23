@@ -92,6 +92,18 @@ class ConfigIngestion(BaseModel):
         "file_mtime",
         description="Fallback timestamp source when EXIF missing",
     )
+    workers: int = Field(
+        4,
+        ge=1,
+        le=32,
+        description=(
+            "Number of concurrent worker threads used to decode images, "
+            "compute hashes, and extract EXIF metadata. Ingestion is I/O- and "
+            "decode-bound – Pillow and imagehash release the GIL during their "
+            "C-level work so threads give near-linear speedup on 4–8 cores. "
+            "Set to 1 to disable parallelism (useful when debugging)."
+        ),
+    )
 
 
 FaceBackend = Literal["auto", "cpu", "cuda", "coreml"]

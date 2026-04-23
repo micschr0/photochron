@@ -92,6 +92,7 @@ def _create_default_config() -> Config:
             skip_duplicates=True,
             extract_gps=False,
             fallback_timestamp="file_mtime",
+            workers=4,
         ),
         face=ConfigFace(
             detection_threshold=0.5,

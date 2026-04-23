@@ -4,6 +4,8 @@ Ingestion stage: Read photos, compute hashes, downsample, extract EXIF.
 
 import hashlib
 import struct
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -31,6 +33,9 @@ class IngestionStage(PipelineStage):
         self.config = get_config()
         self.supported_extensions = set(self.config.ingestion.supported_formats)
         self._hash_cache: dict[Path, str] = {}  # Cache of file path to perceptual hash
+        # Guards the perceptual-hash cache and the progress counter so the
+        # ThreadPoolExecutor in run() can safely share state across workers.
+        self._lock = threading.Lock()
 
     @property
     def name(self) -> str:
@@ -72,21 +77,48 @@ class IngestionStage(PipelineStage):
             self.mark_complete(run_id, photos_processed=0)
             return
 
-        logger.info(f"Found {total_files} image files to process")
+        workers = max(1, min(self.config.ingestion.workers, total_files))
+        logger.info(f"Found {total_files} image files to process (workers={workers})")
 
         processed_count = 0
-        for i, file_path in enumerate(image_files):
-            try:
-                self._process_image(file_path, downsampled_dir, run_id)
-                processed_count += 1
+        done = 0
 
-                # Report progress every 10 files or at the end
-                if (i + 1) % 10 == 0 or (i + 1) == total_files:
-                    logger.info(f"Processed {i + 1}/{total_files} files")
+        def _log_progress() -> None:
+            # Per-file progress is chatty on 1000-photo runs, so only emit
+            # every 10 files (or at the very end) under the shared lock.
+            if done % 10 == 0 or done == total_files:
+                logger.info(f"Processed {done}/{total_files} files")
 
-            except Exception as e:
-                logger.error(f"Failed to process {file_path}: {e}")
-                # Continue with next file
+        if workers == 1:
+            # Preserve the single-threaded code path verbatim for debugging /
+            # deterministic ordering when the user sets workers=1.
+            for file_path in image_files:
+                try:
+                    self._process_image(file_path, downsampled_dir, run_id)
+                    processed_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to process {file_path}: {e}")
+                done += 1
+                _log_progress()
+        else:
+            with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="ingestion") as pool:
+                futures = {
+                    pool.submit(self._process_image, file_path, downsampled_dir, run_id): file_path
+                    for file_path in image_files
+                }
+                for future in as_completed(futures):
+                    file_path = futures[future]
+                    try:
+                        future.result()
+                        with self._lock:
+                            processed_count += 1
+                            done += 1
+                            _log_progress()
+                    except Exception as e:
+                        logger.error(f"Failed to process {file_path}: {e}")
+                        with self._lock:
+                            done += 1
+                            _log_progress()
 
         logger.info(f"Ingestion complete. Processed {processed_count}/{total_files} files successfully")
         self.mark_complete(run_id, photos_processed=processed_count)
