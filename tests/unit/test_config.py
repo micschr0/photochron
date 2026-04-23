@@ -154,3 +154,8 @@ def test_config_context_defaults():
     assert context.min_season_confidence == 0.4
     assert context.use_fallback_on_failure
     assert context.store_minimal_on_complete_failure
+    # Apple-Silicon / Ollama tuning defaults.
+    assert context.keep_alive == "30m"
+    assert context.num_ctx == 2048
+    assert context.num_gpu == -1
+    assert context.model_options == {}

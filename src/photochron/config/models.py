@@ -2,6 +2,8 @@
 Pydantic models for PhotoChron configuration.
 """
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -183,6 +185,42 @@ class ConfigContext(BaseModel):
     store_minimal_on_complete_failure: bool = Field(
         True,
         description="Store minimal data when analysis completely fails",
+    )
+    keep_alive: str = Field(
+        "30m",
+        description=(
+            "Ollama `keep_alive` — how long to keep the model in memory between "
+            "requests. Accepts a duration string ('30s', '10m', '1h') or '-1' "
+            "for 'forever'. Setting this prevents expensive model reloads "
+            "between photos on resource-constrained machines."
+        ),
+    )
+    num_ctx: int = Field(
+        2048,
+        ge=512,
+        le=32768,
+        description=(
+            "Ollama `options.num_ctx` — context window size (tokens). "
+            "Lowering reduces Metal/GPU memory pressure and speeds up inference "
+            "on Apple Silicon; raise only if prompts/outputs get truncated."
+        ),
+    )
+    num_gpu: int = Field(
+        -1,
+        ge=-1,
+        description=(
+            "Ollama `options.num_gpu` — number of layers to offload to GPU. "
+            "-1 = auto (Ollama decides). On Apple Silicon this means all layers "
+            "on Metal. Set 0 to force CPU."
+        ),
+    )
+    model_options: dict[str, dict[str, Any]] = Field(
+        default_factory=dict,
+        description=(
+            "Per-model override of Ollama options. Keys match the model name "
+            "(e.g. 'moondream2'); values are partial options dicts that shadow "
+            "the globals above. Supports 'keep_alive' as a special key."
+        ),
     )
     memory_warning_threshold_mb: int = Field(
         100,

@@ -47,6 +47,10 @@ def test_context_layer_basic_integration(database_store, monkeypatch):
     mock_config.context.min_season_confidence = 0.4
     mock_config.context.use_fallback_on_failure = True
     mock_config.context.store_minimal_on_complete_failure = True
+    mock_config.context.keep_alive = "30m"
+    mock_config.context.num_ctx = 2048
+    mock_config.context.num_gpu = -1
+    mock_config.context.model_options = {}
     mock_config.context.memory_warning_threshold_mb = 100
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
@@ -168,6 +172,10 @@ def test_context_layer_duplicate_processing(database_store, monkeypatch):
     mock_config.context.min_season_confidence = 0.4
     mock_config.context.use_fallback_on_failure = True
     mock_config.context.store_minimal_on_complete_failure = True
+    mock_config.context.keep_alive = "30m"
+    mock_config.context.num_ctx = 2048
+    mock_config.context.num_gpu = -1
+    mock_config.context.model_options = {}
     mock_config.context.memory_warning_threshold_mb = 100
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
@@ -271,6 +279,10 @@ def test_context_layer_analysis_failure(database_store, monkeypatch):
     mock_config.context.min_season_confidence = 0.4
     mock_config.context.use_fallback_on_failure = True
     mock_config.context.store_minimal_on_complete_failure = True
+    mock_config.context.keep_alive = "30m"
+    mock_config.context.num_ctx = 2048
+    mock_config.context.num_gpu = -1
+    mock_config.context.model_options = {}
     mock_config.context.memory_warning_threshold_mb = 100
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
@@ -378,6 +390,10 @@ def test_context_layer_low_confidence_season(database_store, monkeypatch):
     mock_config.context.min_season_confidence = 0.4  # Threshold is 0.4
     mock_config.context.use_fallback_on_failure = True
     mock_config.context.store_minimal_on_complete_failure = True
+    mock_config.context.keep_alive = "30m"
+    mock_config.context.num_ctx = 2048
+    mock_config.context.num_gpu = -1
+    mock_config.context.model_options = {}
     mock_config.context.memory_warning_threshold_mb = 100
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
@@ -502,6 +518,10 @@ def test_context_layer_degraded_mode(database_store, monkeypatch):
     mock_config.context.min_season_confidence = 0.4
     mock_config.context.use_fallback_on_failure = True
     mock_config.context.store_minimal_on_complete_failure = True
+    mock_config.context.keep_alive = "30m"
+    mock_config.context.num_ctx = 2048
+    mock_config.context.num_gpu = -1
+    mock_config.context.model_options = {}
     mock_config.context.memory_warning_threshold_mb = 100
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
@@ -579,6 +599,10 @@ def test_context_layer_batch_processing(database_store, monkeypatch):
     mock_config.context.min_season_confidence = 0.4
     mock_config.context.use_fallback_on_failure = True
     mock_config.context.store_minimal_on_complete_failure = True
+    mock_config.context.keep_alive = "30m"
+    mock_config.context.num_ctx = 2048
+    mock_config.context.num_gpu = -1
+    mock_config.context.model_options = {}
     mock_config.context.memory_warning_threshold_mb = 100
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30
@@ -744,6 +768,10 @@ def test_context_layer_missing_downsample_file(database_store, monkeypatch):
     mock_config.context.min_season_confidence = 0.4
     mock_config.context.use_fallback_on_failure = True
     mock_config.context.store_minimal_on_complete_failure = True
+    mock_config.context.keep_alive = "30m"
+    mock_config.context.num_ctx = 2048
+    mock_config.context.num_gpu = -1
+    mock_config.context.model_options = {}
     mock_config.context.memory_warning_threshold_mb = 100
     mock_config.context.memory_critical_threshold_mb = 50
     mock_config.context.memory_retry_delay_seconds = 30

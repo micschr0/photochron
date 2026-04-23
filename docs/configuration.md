@@ -63,6 +63,27 @@ The context layer configuration provides comprehensive settings for Ollama integ
 - `use_fallback_on_failure`: Use fallback strategies on analysis failure (default: `true`)
 - `store_minimal_on_complete_failure`: Store minimal data when analysis completely fails (default: `true`)
 
+#### Ollama Runtime Tuning (Apple Silicon / performance)
+These fields are forwarded directly to `ollama.generate(...)`. Tuning them is the single biggest Apple-Silicon throughput win.
+
+- `keep_alive`: Duration string (`"30m"`, `"1h"`, `"-1"` for forever) controlling how long Ollama holds the model in memory between photos. Default: `"30m"`. Without a long `keep_alive`, Ollama reloads the ~5 GB llava-next weights every few minutes of idle time, wiping any speedup from Metal.
+- `num_ctx`: Context-window size in tokens (default: `2048`). Lower values reduce Metal memory pressure on 8–16 GB machines; raise only if your prompts or outputs get truncated.
+- `num_gpu`: Number of model layers to offload to the GPU. `-1` (default) means auto — on Apple Silicon this puts all layers on Metal. Set to `0` to force CPU.
+- `model_options`: Per-model overrides as a nested mapping. Useful when a lighter fallback model (e.g. `moondream2`) can use a smaller context:
+  ```yaml
+  context:
+    num_ctx: 2048
+    keep_alive: "30m"
+    model_options:
+      moondream2:
+        num_ctx: 1024
+      "llava-next:7b":
+        keep_alive: "1h"
+  ```
+  Any key supported by Ollama's `options` dict works; `keep_alive` is handled as a special top-level override.
+
+During long generations the CLI now logs a heartbeat line every ~5s so the terminal does not appear frozen while the model is working.
+
 #### Memory Management
 - `memory_warning_threshold_mb`: Memory warning threshold in MB. Logs warning if available memory falls below this value. Must be greater than `memory_critical_threshold_mb`. (default: `100`, range: 10-10000)
 - `memory_critical_threshold_mb`: Memory critical threshold in MB. Skips batch processing if available memory falls below this value. Must be less than `memory_warning_threshold_mb`. (default: `50`, range: 10-10000)

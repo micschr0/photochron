@@ -39,7 +39,7 @@ flowchart LR
 
 ## Stage 2: Face Layer
 **Trigger**: new photos in `photos` without `faces` rows  
-**Model**: InsightFace buffalo_l via ONNX Runtime (CoreML EP on Apple Silicon)  
+**Model**: InsightFace buffalo_l via ONNX Runtime. Current providers: CPU (default) or CUDA when `face.use_gpu: true`. CoreML Execution Provider for Apple Silicon is on the roadmap (see `docs/performance.md` — upcoming), not yet wired.  
 **Key logic**:
 - Detect all faces, compute embeddings + age estimate per face
 - Person identity: compare embedding to known persons (cosine similarity > threshold)
@@ -51,7 +51,7 @@ flowchart LR
 
 ## Stage 3: Context Layer
 **Trigger**: new photos in `photos` without `context` rows  
-**Model**: Ollama (llava-next:7b via MLX), fallback moondream2  
+**Model**: Ollama — suggested primary `llava-next:7b`, fallback `moondream2` (both opt-in, see `config.yaml`). Ollama uses its own backend (Metal via llama.cpp on Apple Silicon, CUDA/CPU elsewhere); PhotoChron does not pick this — it only forwards tuning knobs (`keep_alive`, `num_ctx`, `num_gpu`) to Ollama.  
 **Key logic**:
 
 ### Configuration and Health Management
@@ -104,7 +104,7 @@ See [Testing Strategy](testing.md) for complete test documentation.
 - `memory_retry_delay_seconds`: Delay in seconds to wait when memory is critically low (default: `30`)
 
 **Output table**: `context`  
-**Latency**: ~2–5s/image (7B model, MLX), ~0.5–1.5s/image (moondream2 fallback)
+**Latency** (order-of-magnitude, Apple Silicon M-series with Metal; measure on your own hardware): ~2–5s/image for llava-next:7b once the model is warm, ~0.5–1.5s/image for moondream2. Cold loads add several seconds – configure `keep_alive` (default `"30m"`) to keep the model resident between photos.
 
 **Prompt contract (output schema)**:
 ```json
