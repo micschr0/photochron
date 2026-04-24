@@ -41,9 +41,9 @@ PhotoChron uses a hierarchical configuration system with sensible defaults. Conf
   - `"auto"` – CoreML on arm64 macOS (Apple Silicon), CPU elsewhere
   - `"cpu"` – always CPU (works everywhere)
   - `"cuda"` – NVIDIA GPU via the CUDA EP (requires a CUDA-enabled `onnxruntime` build)
-  - `"coreml"` – Apple Neural Engine / Metal via CoreML EP (errors out on non-Apple-Silicon hosts with a CPU fallback + warning)
+  - `"coreml"` – Apple Neural Engine / GPU / CPU via the CoreML EP. Provider options use `MLProgram` + `MLComputeUnits=ALL` so the runtime can partition per op. Falls back to CPU with a warning when the CoreML EP is missing from the installed `onnxruntime` build (this is the case for the **official `onnxruntime` wheel on macOS arm64**; install a wheel with the CoreML EP such as [`onnxruntime-silicon`](https://github.com/cansik/onnxruntime-silicon) or build from source with `--use_coreml`).
 
-  Run `photochron doctor` to see which providers ONNX Runtime actually exposes on your host and how `"auto"` is resolved.
+  Run `photochron doctor` to see which providers ONNX Runtime actually exposes on your host and how `"auto"` is resolved – the command warns when you are on Apple Silicon but the CoreML EP is not available.
 - `use_gpu`: **Deprecated.** Prefer `backend`. Setting `use_gpu: true` while leaving `backend` at `"auto"` is migrated to `backend: "cuda"` for backward compatibility.
 - `batch_size`: Batch size for face detection (default: `1`)
 

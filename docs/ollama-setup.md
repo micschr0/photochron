@@ -1,10 +1,10 @@
 # Ollama Setup
 
-PhotoChron's Context Layer uses a local [Ollama](https://ollama.com) server for vision LLM inference. Nothing is sent to external services — model weights run on your machine. On Apple Silicon, Ollama uses Metal via llama.cpp; on Linux/Windows it uses CUDA or CPU depending on what Ollama detects. This document covers installation, model pulls, verification, and common issues.
+PhotoChron's Context Layer uses a local [Ollama](https://ollama.com) server for vision LLM inference. Nothing is sent to external services — model weights run on your machine. Ollama 0.19 and newer ship an MLX backend preview on Apple Silicon (Ollama blog post from March 2026) that roughly doubles decode speed compared to the legacy llama.cpp/Metal path that older Ollama versions used; on Linux/Windows the llama.cpp backend still applies. This document covers installation, model pulls, verification, and common issues.
 
 ## Install Ollama
 
-### macOS (Apple Silicon recommended; Metal-accelerated via llama.cpp)
+### macOS (Apple Silicon recommended; MLX-accelerated in Ollama ≥ 0.19, llama.cpp/Metal otherwise)
 
 ```bash
 brew install ollama

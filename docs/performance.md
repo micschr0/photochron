@@ -15,10 +15,10 @@ Apple Silicon (the primary supported platform) and how to measure them.
 | Layer | Setting | Default | Why it matters |
 |---|---|---|---|
 | Ingestion | `ingestion.workers` | `4` | Threadpool over image decode + EXIF extraction. Pillow/imagehash/sqlite3 all release the GIL, so the speed-up is near-linear up to ~8 cores. |
-| Face | `face.backend` | `auto` | `auto` picks CoreML on arm64 macOS and CPU elsewhere. `coreml` explicit forces ANE; falls back to CPU with a warning if the onnxruntime wheel lacks the EP. |
-| Context | `context.keep_alive` | `"30m"` | Ollama unloads the ~5 GB llava-next weights after ~5 min of idleness; the reload costs ~10–30 s per photo. Holding the model keeps Metal warm. |
-| Context | `context.num_ctx` | `2048` | Smaller context window reduces Metal memory pressure on 8–16 GB machines. |
-| Context | `context.num_gpu` | `-1` | Tells Ollama to use "all layers on GPU". On Apple Silicon this means all Metal. |
+| Face | `face.backend` | `auto` | `auto` picks CoreML on arm64 macOS and CPU elsewhere. **The official `onnxruntime` wheel for macOS arm64 ships CPU-only** — to actually use CoreML/ANE you need a wheel that exposes `CoreMLExecutionProvider`, for example the community [`onnxruntime-silicon`](https://github.com/cansik/onnxruntime-silicon) or a source build with `--use_coreml`. Run `photochron doctor` to confirm which providers are available on your host; if CoreML isn't in the list, the face layer silently falls back to CPU. |
+| Context | `context.keep_alive` | `"30m"` | Ollama unloads the ~5 GB llava-next weights after ~5 min of idleness; the reload costs ~10–30 s per photo. Holding the model keeps Metal/MLX buffers warm. |
+| Context | `context.num_ctx` | `2048` | Smaller context window reduces Metal/MLX memory pressure on 8–16 GB unified-memory machines. |
+| Context | `context.num_gpu` | `-1` | Tells Ollama to use "all layers on GPU" (or the equivalent MLX placement in Ollama ≥ 0.19). On Apple Silicon that means all layers in unified memory. |
 | Context | `context.model_options` | `{}` | Per-model overrides (e.g. make the lighter `moondream2` use `num_ctx: 1024`). |
 
 See [configuration.md](configuration.md) for the full field list.

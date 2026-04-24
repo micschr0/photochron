@@ -256,6 +256,18 @@ def doctor() -> None:
         console.print("  Available ONNX Runtime providers:")
         for p in available:
             console.print(f"    - {p}")
+
+        # The official onnxruntime wheel for macOS arm64 is CPU-only; without
+        # an explicit step the user will silently run on CPU even when
+        # `face.backend: auto` looks right. Call this out loudly.
+        if _is_apple_silicon() and "CoreMLExecutionProvider" not in available:
+            console.print(
+                "[yellow]  CoreMLExecutionProvider is not available in this "
+                "onnxruntime build. The face layer will fall back to CPU.[/yellow]"
+            )
+            console.print("[dim]  To enable ANE/CoreML, install a wheel that ships the EP, e.g.:[/dim]")
+            console.print('[dim]    pip uninstall onnxruntime && pip install "onnxruntime-silicon"[/dim]')
+            console.print("[dim]  (community project – verify the source before installing)[/dim]")
     except ImportError:
         console.print("[yellow]  onnxruntime: not installed[/yellow]")
         _resolve_providers = None  # type: ignore[assignment]
