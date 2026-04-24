@@ -88,6 +88,10 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Installation
 
 > **Platform note:** PhotoChron has been developed and tested exclusively on **Apple Silicon** (macOS, M-series). The code is plain Python and should run on Linux/Windows too, but those paths are not verified. If you run it elsewhere, please file issues with what worked and what didn't.
+>
+> For the **face layer to use CoreML / the Apple Neural Engine**, install an `onnxruntime` wheel that includes the CoreML Execution Provider — the official `onnxruntime` wheel for macOS arm64 ships CPU-only. A common drop-in replacement is the community [`onnxruntime-silicon`](https://github.com/cansik/onnxruntime-silicon) package (verify the source before installing). Without it, `face.backend: auto` quietly falls back to CPU. Run `photochron doctor` to check.
+>
+> **Ollama on Apple Silicon** uses Apple's MLX framework in Ollama 0.19 and newer (faster decode via unified memory); older Ollama versions use the llama.cpp/Metal backend.
 
 Requires **Python 3.12+** and [Ollama](https://ollama.com) (for the local vision LLM).
 

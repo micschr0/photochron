@@ -52,7 +52,10 @@ class TestAutoBackend:
         assert providers[-1] == "CPUExecutionProvider"
         # Options aligned 1:1 with providers.
         assert len(options) == len(providers)
-        assert options[0]["MLComputeUnits"] == "CPUAndNeuralEngine"
+        # "ALL" (the onnxruntime default) lets the runtime partition across
+        # ANE / GPU / CPU per op instead of pinning to ANE only.
+        assert options[0]["MLComputeUnits"] == "ALL"
+        assert options[0]["ModelFormat"] == "MLProgram"
         assert options[0]["RequireStaticInputShapes"] == "1"
 
     def test_auto_on_apple_silicon_without_coreml_falls_back_to_cpu(self, apple_silicon):

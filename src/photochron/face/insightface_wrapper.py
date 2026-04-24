@@ -59,16 +59,20 @@ def _resolve_providers(backend: str) -> tuple[list[str], list[dict[str, str]]]:
                 "Falling back to CPU."
             )
             return ["CPUExecutionProvider"], [{}]
-        # MLProgram + CPUAndNeuralEngine biases InsightFace's conv stacks
-        # onto the ANE; unsupported ops fall through to the ONNX CPU EP.
+        # MLProgram is the modern CoreML format and lets the runtime partition
+        # across ANE/GPU/CPU automatically (MLComputeUnits=ALL is the
+        # onnxruntime default). Pinning to "CPUAndNeuralEngine" would skip the
+        # GPU and leave InsightFace's dynamic-shape-ish ops on the slower CPU
+        # EP fallback – prefer the built-in default, override via
+        # PHOTOCHRON_FACE_MLCOMPUTE_UNITS if a given host wins with ANE-only.
         # RequireStaticInputShapes=1 is safe because FaceAnalysis.prepare()
-        # pins det_size at construction time.
+        # pins det_size=(640, 640) at construction time.
         return (
             ["CoreMLExecutionProvider", "CPUExecutionProvider"],
             [
                 {
                     "ModelFormat": "MLProgram",
-                    "MLComputeUnits": "CPUAndNeuralEngine",
+                    "MLComputeUnits": "ALL",
                     "RequireStaticInputShapes": "1",
                 },
                 {},
