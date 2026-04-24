@@ -1,0 +1,352 @@
+{
+  "version": 1,
+  "weights": {
+    "face": 0.45,
+    "llm": 0.3,
+    "medium": 0.1
+  },
+  "min_confidence_threshold": 0.5,
+  "year_tolerance": 2,
+  "photos": [
+    {
+      "id": 1,
+      "label": "exif override \u2014 1965 sepia",
+      "exif_datetime": "1965:07:14 12:30:00",
+      "face_year": null,
+      "face_confidence": null,
+      "decade": "1960-1970",
+      "decade_confidence": 0.6,
+      "photo_medium": "sepia",
+      "photo_medium_confidence": 0.8,
+      "expected": {
+        "year": 1965,
+        "confidence": 1.0,
+        "review_needed": false,
+        "sort_rank": 2
+      }
+    },
+    {
+      "id": 2,
+      "label": "exif override \u2014 1978 polaroid",
+      "exif_datetime": "1978-03-02 09:00:00",
+      "face_year": 1982,
+      "face_confidence": 0.7,
+      "decade": "1970-1980",
+      "decade_confidence": 0.8,
+      "photo_medium": "polaroid",
+      "photo_medium_confidence": 0.9,
+      "expected": {
+        "year": 1978,
+        "confidence": 1.0,
+        "review_needed": false,
+        "sort_rank": 8
+      }
+    },
+    {
+      "id": 3,
+      "label": "exif override \u2014 1999 print",
+      "exif_datetime": "1999:11:25 18:20:00",
+      "face_year": null,
+      "face_confidence": null,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": "print",
+      "photo_medium_confidence": 0.7,
+      "expected": {
+        "year": 1999,
+        "confidence": 1.0,
+        "review_needed": false,
+        "sort_rank": 14
+      }
+    },
+    {
+      "id": 4,
+      "label": "exif override \u2014 2015 digital",
+      "exif_datetime": "2015:06:10 14:45:00",
+      "face_year": 2014,
+      "face_confidence": 0.9,
+      "decade": "2010-2020",
+      "decade_confidence": 0.85,
+      "photo_medium": "digital",
+      "photo_medium_confidence": 0.95,
+      "expected": {
+        "year": 2015,
+        "confidence": 1.0,
+        "review_needed": false,
+        "sort_rank": 18
+      }
+    },
+    {
+      "id": 5,
+      "label": "full stack \u2014 1955 b&w, strong face+llm agreement",
+      "exif_datetime": null,
+      "face_year": 1955,
+      "face_confidence": 0.75,
+      "decade": "1950-1960",
+      "decade_confidence": 0.7,
+      "photo_medium": "black_and_white",
+      "photo_medium_confidence": 0.9,
+      "expected": {
+        "year": 1955,
+        "confidence": 0.686471,
+        "review_needed": false,
+        "sort_rank": 1
+      }
+    },
+    {
+      "id": 6,
+      "label": "full stack \u2014 1972 film, slight face/llm disagreement",
+      "exif_datetime": null,
+      "face_year": 1974,
+      "face_confidence": 0.6,
+      "decade": "1970-1980",
+      "decade_confidence": 0.55,
+      "photo_medium": "film",
+      "photo_medium_confidence": 0.8,
+      "expected": {
+        "year": 1974,
+        "confidence": 0.544706,
+        "review_needed": false,
+        "sort_rank": 5
+      }
+    },
+    {
+      "id": 7,
+      "label": "full stack \u2014 1988 print_scan, high face confidence",
+      "exif_datetime": null,
+      "face_year": 1988,
+      "face_confidence": 0.85,
+      "decade": "1985-1995",
+      "decade_confidence": 0.7,
+      "photo_medium": "print_scan",
+      "photo_medium_confidence": 0.85,
+      "expected": {
+        "year": 1989,
+        "confidence": 0.732059,
+        "review_needed": false,
+        "sort_rank": 9
+      }
+    },
+    {
+      "id": 8,
+      "label": "full stack \u2014 2005 digital, all signals agree",
+      "exif_datetime": null,
+      "face_year": 2005,
+      "face_confidence": 0.8,
+      "decade": "2000-2010",
+      "decade_confidence": 0.8,
+      "photo_medium": "digital",
+      "photo_medium_confidence": 0.9,
+      "expected": {
+        "year": 2005,
+        "confidence": 0.769412,
+        "review_needed": false,
+        "sort_rank": 15
+      }
+    },
+    {
+      "id": 9,
+      "label": "face only \u2014 1992, no llm/medium",
+      "exif_datetime": null,
+      "face_year": 1992,
+      "face_confidence": 0.7,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": null,
+      "photo_medium_confidence": null,
+      "expected": {
+        "year": 1992,
+        "confidence": 0.370588,
+        "review_needed": true,
+        "sort_rank": 11
+      }
+    },
+    {
+      "id": 10,
+      "label": "face only \u2014 1968, low confidence",
+      "exif_datetime": null,
+      "face_year": 1968,
+      "face_confidence": 0.4,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": null,
+      "photo_medium_confidence": null,
+      "expected": {
+        "year": 1968,
+        "confidence": 0.211765,
+        "review_needed": true,
+        "sort_rank": 4
+      }
+    },
+    {
+      "id": 11,
+      "label": "face only \u2014 2008 high confidence",
+      "exif_datetime": null,
+      "face_year": 2008,
+      "face_confidence": 0.9,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": null,
+      "photo_medium_confidence": null,
+      "expected": {
+        "year": 2008,
+        "confidence": 0.476471,
+        "review_needed": true,
+        "sort_rank": 16
+      }
+    },
+    {
+      "id": 12,
+      "label": "face only \u2014 1945 B&W era (no other signal)",
+      "exif_datetime": null,
+      "face_year": 1945,
+      "face_confidence": 0.55,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": null,
+      "photo_medium_confidence": null,
+      "expected": {
+        "year": 1945,
+        "confidence": 0.291176,
+        "review_needed": true,
+        "sort_rank": 0
+      }
+    },
+    {
+      "id": 13,
+      "label": "llm + medium \u2014 1977 polaroid, no face",
+      "exif_datetime": null,
+      "face_year": null,
+      "face_confidence": null,
+      "decade": "1975-1980",
+      "decade_confidence": 0.7,
+      "photo_medium": "polaroid",
+      "photo_medium_confidence": 0.85,
+      "expected": {
+        "year": 1977,
+        "confidence": 0.292059,
+        "review_needed": true,
+        "sort_rank": 6
+      }
+    },
+    {
+      "id": 14,
+      "label": "llm + medium \u2014 1995 print_scan, no face",
+      "exif_datetime": null,
+      "face_year": null,
+      "face_confidence": null,
+      "decade": "1990-2000",
+      "decade_confidence": 0.65,
+      "photo_medium": "print_scan",
+      "photo_medium_confidence": 0.7,
+      "expected": {
+        "year": 1994,
+        "confidence": 0.258235,
+        "review_needed": true,
+        "sort_rank": 12
+      }
+    },
+    {
+      "id": 15,
+      "label": "llm + medium \u2014 2012 digital, no face",
+      "exif_datetime": null,
+      "face_year": null,
+      "face_confidence": null,
+      "decade": "2010-2020",
+      "decade_confidence": 0.75,
+      "photo_medium": "digital",
+      "photo_medium_confidence": 0.9,
+      "expected": {
+        "year": 2014,
+        "confidence": 0.328235,
+        "review_needed": true,
+        "sort_rank": 17
+      }
+    },
+    {
+      "id": 16,
+      "label": "llm + medium \u2014 1962 slide, no face",
+      "exif_datetime": null,
+      "face_year": null,
+      "face_confidence": null,
+      "decade": "1960-1970",
+      "decade_confidence": 0.6,
+      "photo_medium": "slide",
+      "photo_medium_confidence": 0.75,
+      "expected": {
+        "year": 1966,
+        "confidence": 0.247059,
+        "review_needed": true,
+        "sort_rank": 3
+      }
+    },
+    {
+      "id": 17,
+      "label": "medium only \u2014 polaroid, low confidence \u2192 review",
+      "exif_datetime": null,
+      "face_year": null,
+      "face_confidence": null,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": "polaroid",
+      "photo_medium_confidence": 0.5,
+      "expected": {
+        "year": 1978,
+        "confidence": 0.026471,
+        "review_needed": true,
+        "sort_rank": 7
+      }
+    },
+    {
+      "id": 18,
+      "label": "medium only \u2014 unknown, very low confidence \u2192 review",
+      "exif_datetime": null,
+      "face_year": null,
+      "face_confidence": null,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": "unknown",
+      "photo_medium_confidence": 0.4,
+      "expected": {
+        "year": 1990,
+        "confidence": 0.009412,
+        "review_needed": true,
+        "sort_rank": 10
+      }
+    },
+    {
+      "id": 19,
+      "label": "no usable signals \u2014 all None \u2192 review_needed",
+      "exif_datetime": null,
+      "face_year": null,
+      "face_confidence": null,
+      "decade": null,
+      "decade_confidence": null,
+      "photo_medium": null,
+      "photo_medium_confidence": null,
+      "expected": {
+        "year": null,
+        "confidence": 0.0,
+        "review_needed": true,
+        "sort_rank": 19
+      }
+    },
+    {
+      "id": 20,
+      "label": "face weak + llm strong \u2014 llm should dominate",
+      "exif_datetime": null,
+      "face_year": 1980,
+      "face_confidence": 0.2,
+      "decade": "1995-2005",
+      "decade_confidence": 0.85,
+      "photo_medium": "digital",
+      "photo_medium_confidence": 0.8,
+      "expected": {
+        "year": 1997,
+        "confidence": 0.462353,
+        "review_needed": true,
+        "sort_rank": 13
+      }
+    }
+  ]
+}
