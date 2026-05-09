@@ -1,6 +1,6 @@
 # Context Layer
 
-The Context Layer (Stage 3 of the PhotoChron pipeline) analyzes each photo with a local vision LLM through [Ollama](https://ollama.com) and stores structured context data — decade estimate, season, event hint, photo medium — plus per-field confidence scores in the `context` table. All inference runs on-device; images never leave the machine.
+The Context Layer (Stage 3 of the photochron pipeline) analyzes each photo with a local vision LLM through [Ollama](https://ollama.com) and stores structured context data — decade estimate, season, event hint, photo medium — plus per-field confidence scores in the `context` table. All inference runs on-device; images never leave the machine.
 
 ## Architecture
 

@@ -1,6 +1,6 @@
-# Contributing to PhotoChron
+# Contributing to photochron
 
-Thanks for your interest in improving PhotoChron! This document covers the development setup and the conventions we follow.
+Thanks for your interest in improving photochron! This document covers the development setup and the conventions we follow.
 
 ## Development setup
 
@@ -45,7 +45,7 @@ Both are enforced via `pre-commit` and in CI.
 
 - **Python 3.12+** features are allowed (use them).
 - **Type hints everywhere.** `mypy` is configured strictly — no untyped defs.
-- **Confidence scores on every AI result.** PhotoChron's core contract: low-confidence photos are flagged, not silently wrong.
+- **Confidence scores on every AI result.** photochron's core contract: low-confidence photos are flagged, not silently wrong.
 - **Non-destructive.** Never modify files in a user's input directory. Always write copies.
 - **Local-only.** No HTTP calls to external image-analysis APIs. All inference must run on-device.
 - **Models are opt-in.** Do not restore hardcoded model defaults; users must uncomment model entries in `config.yaml` after verifying licenses.
@@ -83,7 +83,7 @@ possible; otherwise kept as strings.
 ## Reporting bugs
 
 Open a GitHub issue with:
-- PhotoChron version (`python -m photochron --version`)
+- photochron version (`python -m photochron --version`)
 - OS and Python version
 - Minimal reproduction (config snippet + command)
 - Full error output

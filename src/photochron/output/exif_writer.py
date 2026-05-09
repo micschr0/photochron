@@ -49,7 +49,7 @@ def write_exif_fields(
     review_needed: bool,
     full_result: dict[str, Any],
 ) -> bool:
-    """Write PhotoChron EXIF fields to an existing JPEG file.
+    """Write photochron EXIF fields to an existing JPEG file.
 
     Returns True if EXIF was written, False if skipped (e.g. unsupported format
     or piexif missing).

@@ -1,3 +1,3 @@
 """
-PhotoChron test suite.
+photochron test suite.
 """

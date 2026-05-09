@@ -1,6 +1,6 @@
 # Pipeline Architecture
 
-PhotoChron uses a 6-stage pipeline where each stage reads/writes to a SQLite Feature Store only. Stages are independently re-runnable via `photochron rerun --stage <name>`.
+photochron uses a 6-stage pipeline where each stage reads/writes to a SQLite Feature Store only. Stages are independently re-runnable via `photochron rerun --stage <name>`.
 
 ```mermaid
 flowchart LR
@@ -51,7 +51,7 @@ flowchart LR
 
 ## Stage 3: Context Layer
 **Trigger**: new photos in `photos` without `context` rows  
-**Model**: Ollama — suggested primary `llava-next:7b`, fallback `moondream2` (both opt-in, see `config.yaml`). Ollama picks its own backend: MLX (Apple's ML framework) on Apple Silicon starting with Ollama 0.19, llama.cpp/Metal on older Ollama on Apple Silicon, llama.cpp/CUDA or CPU elsewhere. PhotoChron does not select the backend — it only forwards tuning knobs (`keep_alive`, `num_ctx`, `num_gpu`) to Ollama.  
+**Model**: Ollama — suggested primary `llava-next:7b`, fallback `moondream2` (both opt-in, see `config.yaml`). Ollama picks its own backend: MLX (Apple's ML framework) on Apple Silicon starting with Ollama 0.19, llama.cpp/Metal on older Ollama on Apple Silicon, llama.cpp/CUDA or CPU elsewhere. photochron does not select the backend — it only forwards tuning knobs (`keep_alive`, `num_ctx`, `num_gpu`) to Ollama.  
 **Key logic**:
 
 ### Configuration and Health Management

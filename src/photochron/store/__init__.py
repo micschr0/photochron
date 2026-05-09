@@ -1,5 +1,5 @@
 """
-SQLite Feature Store for PhotoChron pipeline.
+SQLite Feature Store for photochron pipeline.
 
 This module provides database connection management, schema definition,
 and query helpers for the 6-stage pipeline.

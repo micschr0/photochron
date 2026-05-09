@@ -1,6 +1,6 @@
 # Performance
 
-This document collects the knobs that matter for PhotoChron throughput on
+This document collects the knobs that matter for photochron throughput on
 Apple Silicon (the primary supported platform) and how to measure them.
 
 > **Target:** 1000 photos per run should feel responsive on a modern

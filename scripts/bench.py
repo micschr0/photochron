@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Benchmark PhotoChron's ingestion stage on a synthetic fixture.
+Benchmark photochron's ingestion stage on a synthetic fixture.
 
 Focus: measure the effect of ``config.ingestion.workers`` (the P1c
 ThreadPoolExecutor) on a directory of synthetic JPEGs. The context

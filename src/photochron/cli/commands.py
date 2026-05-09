@@ -11,9 +11,9 @@ console = Console()
 
 
 def _print_privacy_banner() -> None:
-    """Remind users that PhotoChron is intended for private family photos."""
+    """Remind users that photochron is intended for private family photos."""
     console.print(
-        "[yellow]PhotoChron is intended for private family photos. "
+        "[yellow]photochron is intended for private family photos. "
         "Treat EXIF data (and any GPS coordinates you enable) as sensitive.[/yellow]"
     )
 
@@ -63,7 +63,7 @@ def run(
         output_dir.mkdir(parents=True, exist_ok=True)
 
     _print_privacy_banner()
-    console.print("[bold]PhotoChron Pipeline[/bold]")
+    console.print("[bold]photochron Pipeline[/bold]")
     console.print(f"  Input directory: {input_dir}")
     console.print(f"  Output directory: {output_dir}")
     console.print(f"  Dry run: {'Yes' if dry_run else 'No'}")
@@ -170,7 +170,7 @@ def status() -> None:
     """
     from photochron.store import get_store
 
-    console.print("[bold]PhotoChron Status[/bold]")
+    console.print("[bold]photochron Status[/bold]")
 
     try:
         store = get_store()
@@ -229,7 +229,7 @@ def status() -> None:
 
 def doctor() -> None:
     """
-    Diagnose the PhotoChron environment.
+    Diagnose the photochron environment.
 
     Read-only health check that reports Python/platform info, the ONNX Runtime
     providers actually available on this host, the resolved face backend, the
@@ -240,7 +240,7 @@ def doctor() -> None:
     import sys
 
     _print_privacy_banner()
-    console.print("[bold]PhotoChron doctor[/bold]")
+    console.print("[bold]photochron doctor[/bold]")
     console.print(f"  Python: {sys.version.split()[0]}")
     console.print(f"  Platform: {_platform.system()} {_platform.machine()}")
 

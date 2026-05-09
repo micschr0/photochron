@@ -1,5 +1,5 @@
 """
-SQL schema definition for PhotoChron Feature Store.
+SQL schema definition for photochron Feature Store.
 """
 
 import sqlite3

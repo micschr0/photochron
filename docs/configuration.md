@@ -1,6 +1,6 @@
 # Configuration Reference
 
-PhotoChron uses a hierarchical configuration system with sensible defaults. Configuration can be customized via `config.yaml` or environment variables.
+photochron uses a hierarchical configuration system with sensible defaults. Configuration can be customized via `config.yaml` or environment variables.
 
 ## Configuration Structure
 
@@ -136,7 +136,7 @@ export PHOTOCHRON_INGESTION_EXTRACT_GPS=false
 ## Default Configuration File
 
 ```yaml
-# PhotoChron Configuration
+# photochron Configuration
 # Default values from architecture specification
 
 version: "1.0"

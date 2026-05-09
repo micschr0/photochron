@@ -1,6 +1,6 @@
 # Ollama Setup
 
-PhotoChron's Context Layer uses a local [Ollama](https://ollama.com) server for vision LLM inference. Nothing is sent to external services — model weights run on your machine. Ollama 0.19 and newer ship an MLX backend preview on Apple Silicon (Ollama blog post from March 2026) that roughly doubles decode speed compared to the legacy llama.cpp/Metal path that older Ollama versions used; on Linux/Windows the llama.cpp backend still applies. This document covers installation, model pulls, verification, and common issues.
+photochron's Context Layer uses a local [Ollama](https://ollama.com) server for vision LLM inference. Nothing is sent to external services — model weights run on your machine. Ollama 0.19 and newer ship an MLX backend preview on Apple Silicon (Ollama blog post from March 2026) that roughly doubles decode speed compared to the legacy llama.cpp/Metal path that older Ollama versions used; on Linux/Windows the llama.cpp backend still applies. This document covers installation, model pulls, verification, and common issues.
 
 ## Install Ollama
 
@@ -37,7 +37,7 @@ Download the installer from [ollama.com/download](https://ollama.com/download) a
 
 ## Pull the Required Models
 
-PhotoChron uses a primary and a fallback vision model. Defaults:
+photochron uses a primary and a fallback vision model. Defaults:
 
 - **Primary**: `llava-next:7b` — higher quality, ~5 GB
 - **Fallback**: `moondream2` — smaller, faster, ~1.7 GB
@@ -49,7 +49,7 @@ ollama pull llava-next:7b
 ollama pull moondream2
 ```
 
-Tip: you can pull just one if disk or RAM is tight. PhotoChron will detect which models are available at startup and degrade gracefully.
+Tip: you can pull just one if disk or RAM is tight. photochron will detect which models are available at startup and degrade gracefully.
 
 List installed models:
 
@@ -70,7 +70,7 @@ ollama list
    ollama run moondream2 "Say hello"
    ```
 
-3. **Smoke test from PhotoChron**:
+3. **Smoke test from photochron**:
    ```bash
    python -m photochron status
    ```
@@ -82,7 +82,7 @@ ollama list
    ```
    Inspect the logs for health and progress lines.
 
-## Configure PhotoChron
+## Configure photochron
 
 Set the server and model names in `config.yaml`:
 
@@ -105,7 +105,7 @@ context:
   ollama_host: http://192.168.1.42:11434
 ```
 
-> Security note: PhotoChron is local-first by design. Only point it at a trusted private server — biometric family data must not leave your network.
+> Security note: photochron is local-first by design. Only point it at a trusted private server — biometric family data must not leave your network.
 
 ## Lighter Configuration (low-RAM / older hardware)
 
@@ -150,7 +150,7 @@ Set the model names in `config.yaml` and make sure they match the tags you pulle
 ### `OOM` / system becomes unresponsive
 - Lower `batch_size` to `1`.
 - Switch to `moondream2`.
-- Raise `memory_critical_threshold_mb` — PhotoChron will pause batches when RAM is tight.
+- Raise `memory_critical_threshold_mb` — photochron will pause batches when RAM is tight.
 
 ### Models load every run and slow things down
 - Keep Ollama resident (`brew services start ollama` / systemd unit) so models stay warm.

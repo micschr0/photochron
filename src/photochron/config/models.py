@@ -1,5 +1,5 @@
 """
-Pydantic models for PhotoChron configuration.
+Pydantic models for photochron configuration.
 """
 
 from typing import Any, Literal

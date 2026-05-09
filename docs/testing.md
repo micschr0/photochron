@@ -1,6 +1,6 @@
 # Testing Strategy and Test Suite
 
-PhotoChron uses a comprehensive testing strategy to ensure reliability, correctness, and maintainability of the codebase. This document describes the testing approach, test organization, and how to run tests.
+photochron uses a comprehensive testing strategy to ensure reliability, correctness, and maintainability of the codebase. This document describes the testing approach, test organization, and how to run tests.
 
 ## Test Organization
 

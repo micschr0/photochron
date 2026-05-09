@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate a synthetic PhotoChron benchmark fixture.
+Generate a synthetic photochron benchmark fixture.
 
 The generated photos are deliberately *not* real family photos – we want
 repeatable, privacy-free benchmarking. Each image has:

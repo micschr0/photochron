@@ -1,6 +1,6 @@
 """
-Examples directory for PhotoChron.
+Examples directory for photochron.
 
 This directory contains example configurations, scripts, and usage examples
-for the PhotoChron photo analysis pipeline.
+for the photochron photo analysis pipeline.
 """

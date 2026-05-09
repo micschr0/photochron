@@ -27,7 +27,7 @@ def test_cli_version():
     """Test --version flag."""
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "PhotoChron v0.1.0" in result.output
+    assert "photochron v0.1.0" in result.output
 
 
 def test_cli_run_help():
@@ -71,7 +71,7 @@ def test_cli_run_dry_run():
 
         # Should succeed (dry-run doesn't require actual processing)
         assert result.exit_code == 0
-        assert "PhotoChron Pipeline" in result.output
+        assert "photochron Pipeline" in result.output
         assert "Dry run: Yes" in result.output
 
 
@@ -80,7 +80,7 @@ def test_cli_status():
     result = runner.invoke(app, ["status"])
     # Status should work even with empty database
     assert result.exit_code == 0
-    assert "PhotoChron Status" in result.output
+    assert "photochron Status" in result.output
 
 
 def test_cli_rerun_invalid_stage():
@@ -194,4 +194,4 @@ def test_cli_configuration_loading():
         result = runner.invoke(app, ["run", "--input", str(input_dir), "--dry-run"])
 
         assert result.exit_code == 0
-        assert "PhotoChron Pipeline" in result.output
+        assert "photochron Pipeline" in result.output

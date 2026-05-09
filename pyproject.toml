@@ -7,14 +7,14 @@ name = "photochron"
 version = "0.1.0"
 description = "Local-first CLI tool that sorts digitized family photos without timestamps into chronological order using AI-based age estimation"
 readme = "README.md"
-license = {text = "MIT"}
+license = "AGPL-3.0-or-later"
 authors = [
-    {name = "PhotoChron Contributors"}
+    {name = "photochron Contributors"}
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Operating System :: MacOS",
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Graphics",

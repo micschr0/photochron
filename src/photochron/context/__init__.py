@@ -1,5 +1,5 @@
 """
-Context analysis module for PhotoChron.
+Context analysis module for photochron.
 
 This module provides tools for analyzing photo context using vision LLMs,
 including decade estimation, season detection, event hints, and photo medium

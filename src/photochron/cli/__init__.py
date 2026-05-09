@@ -1,5 +1,5 @@
 """
-PhotoChron CLI interface using Typer.
+photochron CLI interface using Typer.
 """
 
 from pathlib import Path
@@ -21,7 +21,7 @@ app.command(name="run", help="Run full pipeline on input directory")(run)
 app.command(name="cluster", help="Face clustering and person assignment")(cluster)
 app.command(name="rerun", help="Re-run specific pipeline stage")(rerun)
 app.command(name="status", help="Show pipeline progress and cache stats")(status)
-app.command(name="doctor", help="Diagnose the PhotoChron environment (read-only)")(doctor)
+app.command(name="doctor", help="Diagnose the photochron environment (read-only)")(doctor)
 
 
 @app.callback(invoke_without_command=True)
@@ -46,14 +46,14 @@ def main(
     ),
 ) -> None:
     """
-    PhotoChron - Sort family photos chronologically using AI.
+    photochron - Sort family photos chronologically using AI.
 
     All inference runs fully on-device. No data leaves the machine.
     """
     if version:
         from photochron import __version__
 
-        typer.echo(f"PhotoChron v{__version__}")
+        typer.echo(f"photochron v{__version__}")
         raise typer.Exit()
 
     from photochron.config import get_config

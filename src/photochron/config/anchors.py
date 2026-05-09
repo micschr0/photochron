@@ -157,7 +157,7 @@ def validate_anchors(anchors: Anchors) -> list[str]:
 
 def create_anchors_template(template_path: Path) -> None:
     """Create a template anchors.yaml file with examples."""
-    template = """# PhotoChron Anchors File
+    template = """# photochron Anchors File
 # User-provided anchor data for chronological sorting
 
 # Persons section: Known people with birthdays

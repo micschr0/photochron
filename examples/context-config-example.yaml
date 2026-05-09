@@ -1,4 +1,4 @@
-# Example PhotoChron configuration — Context Layer
+# Example photochron configuration — Context Layer
 #
 # This file documents every option under the `context:` section of config.yaml.
 # Copy the `context:` block into your project's config.yaml and tweak values

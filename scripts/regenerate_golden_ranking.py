@@ -2,7 +2,7 @@
 """
 Regenerate the golden ranking fixture from its input definitions.
 
-The golden fixture is a frozen snapshot of the PhotoChron ranking math:
+The golden fixture is a frozen snapshot of the photochron ranking math:
 given a fixed set of synthetic signal-tuples, it records the year and
 sort-rank the current code produces. Intentional changes to the ranking
 algorithm (new weights, new medium priors, tweaked threshold) need to be

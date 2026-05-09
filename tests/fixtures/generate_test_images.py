@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate test images for PhotoChron tests.
+Generate test images for photochron tests.
 """
 
 import sys

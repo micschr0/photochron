@@ -1,4 +1,6 @@
-# PhotoChron
+# photochron
+
+> **⚠️ Early alpha — not ready for production use. Expect breaking changes.**
 
 > Local-first CLI tool that sorts digitized family photos without timestamps into chronological order — using on-device AI age estimation, visual context analysis, and user-provided anchor data (birthdays, events).
 
@@ -10,7 +12,7 @@
 
 ```mermaid
 flowchart LR
-    A[📂 Photo folder<br/>no timestamps]:::input --> P[PhotoChron<br/>🔒 local / on-device]:::core
+    A[📂 Photo folder<br/>no timestamps]:::input --> P[photochron<br/>🔒 local / on-device]:::core
     K[👪 Anchors<br/>birthdays · events]:::input --> P
     P --> O[📅 Chronologically<br/>sorted output]:::output
 
@@ -19,7 +21,7 @@ flowchart LR
     classDef output fill:#e8d5a8,stroke:#8a6f3a,stroke-width:2px,color:#3a2e14
 ```
 
-Under the hood, PhotoChron runs a 6-stage pipeline. Each stage writes to a local SQLite feature store, so expensive AI inference runs only once per photo:
+Under the hood, photochron runs a 6-stage pipeline. Each stage writes to a local SQLite feature store, so expensive AI inference runs only once per photo:
 
 ```mermaid
 flowchart LR
@@ -49,7 +51,7 @@ See [docs/pipeline.md](docs/pipeline.md) for a deep dive into each stage.
 
 ## What you get
 
-PhotoChron never touches your originals. It writes copies into `{output_dir}/` with two complementary layouts:
+photochron never touches your originals. It writes copies into `{output_dir}/` with two complementary layouts:
 
 ```
 photochron_output/
@@ -69,17 +71,9 @@ photochron_output/
 **Mode A** lets you drop the `renamed/` folder into any photo viewer and browse your family history in order.
 **Mode B** preserves original filenames but writes the estimated date into EXIF, so Apple Photos / Lightroom / digiKam pick it up automatically.
 
-Photos flagged with low confidence end up in `review_needed = true` in `photochron_report.json` — PhotoChron surfaces uncertainty rather than guessing silently.
+Photos flagged with low confidence end up in `review_needed = true` in `photochron_report.json` — photochron surfaces uncertainty rather than guessing silently.
 
 ---
-
-## ⚠️ Alpha status
-
-PhotoChron is in **early alpha**:
-
-- `photochron run` is wired to the real 6-stage pipeline (with `--dry-run` short-circuit). Requires a configured AI model — see the license-verification block in `config.yaml`; model entries are commented out by default and must be uncommented explicitly.
-- `photochron status` reads the SQLite feature store.
-- `photochron cluster` and `photochron rerun` are still placeholders — see `docs/CHANGELOG.md` for the rollout plan.
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -87,7 +81,7 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Installation
 
-> **Platform note:** PhotoChron has been developed and tested exclusively on **Apple Silicon** (macOS, M-series). The code is plain Python and should run on Linux/Windows too, but those paths are not verified. If you run it elsewhere, please file issues with what worked and what didn't.
+> **Platform note:** photochron has been developed and tested exclusively on **Apple Silicon** (macOS, M-series). The code is plain Python and should run on Linux/Windows too, but those paths are not verified. If you run it elsewhere, please file issues with what worked and what didn't.
 >
 > For the **face layer to use CoreML / the Apple Neural Engine**, install an `onnxruntime` wheel that includes the CoreML Execution Provider — the official `onnxruntime` wheel for macOS arm64 ships CPU-only. A common drop-in replacement is the community [`onnxruntime-silicon`](https://github.com/cansik/onnxruntime-silicon) package (verify the source before installing). Without it, `face.backend: auto` quietly falls back to CPU. Run `photochron doctor` to check.
 >
@@ -115,7 +109,7 @@ For local model setup (Ollama, InsightFace), see [docs/ollama-setup.md](docs/oll
 # Show pipeline status (functional)
 python -m photochron status
 
-# Full pipeline run (currently a demo stub — see Alpha status above)
+# Full pipeline run
 python -m photochron run --input ./photos --output ./photochron_output
 
 # Dry run (no file writes)
@@ -146,4 +140,4 @@ Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+AGPL-3.0-or-later — see [LICENSE](LICENSE).

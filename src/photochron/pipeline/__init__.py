@@ -1,5 +1,5 @@
 """
-Pipeline foundation for PhotoChron 6-stage architecture.
+Pipeline foundation for photochron 6-stage architecture.
 
 Defines the PipelineStage abstract base class and pipeline orchestration.
 """

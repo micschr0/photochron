@@ -1,8 +1,8 @@
-# PhotoChron Configuration
+# photochron Configuration
 #
 # IMPORTANT – MODEL LICENSES
 # ---------------------------------------------------------------------------
-# The AI model entries below are intentionally commented out. PhotoChron does
+# The AI model entries below are intentionally commented out. photochron does
 # NOT ship with a hardcoded default model. You must:
 #   1. Verify the license of each model for your intended use (private family
 #      archive, personal research, etc.). Licenses change; check the current
@@ -121,5 +121,5 @@ pipeline:
 #   PHOTOCHRON_CONTEXT_OLLAMA_HOST=http://ollama:11434
 #   PHOTOCHRON_FACE_USE_GPU=true
 #   PHOTOCHRON_MODELS_MAX_IMAGE_SIZE=2048
-# This makes it straightforward to run PhotoChron in a container where the
+# This makes it straightforward to run photochron in a container where the
 # Ollama service or cache paths differ from the host defaults.

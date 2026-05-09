@@ -1,5 +1,5 @@
 """
-Configuration management for PhotoChron.
+Configuration management for photochron.
 
 Loads configuration from config.yaml, environment variables, and provides
 default values from the architecture specification.

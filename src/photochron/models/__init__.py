@@ -1,5 +1,5 @@
 """
-Pydantic models for PhotoChron data tables and AI model clients.
+Pydantic models for photochron data tables and AI model clients.
 
 These models represent the structured data stored in the SQLite Feature Store
 and are used for validation, serialization, and type-safe data handling.

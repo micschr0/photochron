@@ -1,6 +1,6 @@
-# PhotoChron Documentation
+# photochron Documentation
 
-This directory contains user-facing documentation for PhotoChron.
+This directory contains user-facing documentation for photochron.
 
 ## Documentation Index
 
@@ -40,7 +40,7 @@ python -m photochron status
 
 ## Configuration
 
-PhotoChron uses a hierarchical configuration system. The default configuration is in `config.yaml` at the project root. Any value can be overridden using environment variables:
+photochron uses a hierarchical configuration system. The default configuration is in `config.yaml` at the project root. Any value can be overridden using environment variables:
 
 ```bash
 # Override Ollama host
@@ -54,7 +54,7 @@ See [Configuration Reference](configuration.md) for complete details.
 
 ## Architecture Overview
 
-PhotoChron uses a 6-stage pipeline where each stage reads/writes to a SQLite Feature Store only. Stages are independently re-runnable.
+photochron uses a 6-stage pipeline where each stage reads/writes to a SQLite Feature Store only. Stages are independently re-runnable.
 
 **Pipeline Stages:**
 1. **Ingestion** → Reads image files, extracts metadata, creates downsampled copies

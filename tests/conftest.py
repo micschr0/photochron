@@ -1,5 +1,5 @@
 """
-Pytest fixtures for PhotoChron tests.
+Pytest fixtures for photochron tests.
 """
 
 import tempfile

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Profile face detection performance for PhotoChron face layer.
+Profile face detection performance for photochron face layer.
 
 Measures detection time on CPU (and optionally GPU) with realistic image sizes.
 """

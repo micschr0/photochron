@@ -1,3 +1,3 @@
 """
-Unit tests for PhotoChron.
+Unit tests for photochron.
 """
