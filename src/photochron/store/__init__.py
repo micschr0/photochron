@@ -10,18 +10,30 @@ import threading
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
-
-from photochron import CACHE_DIR
 
 from .queries import QueryHelper
+
+
+def _default_db_path() -> Path:
+    """Return the configured cache database path, creating its parent on demand.
+
+    Lazy so that ``import photochron`` does not touch the filesystem (we used
+    to ``mkdir`` at import time, which produced surprises after ``pip install``
+    when the package path resolved into ``site-packages``).
+    """
+    from photochron.config import get_config
+
+    cache_dir = Path(get_config().paths.cache_dir).expanduser()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / "cache.db"
 
 
 class DatabaseStore:
     """Manages SQLite database connections with connection pooling."""
 
     def __init__(self, db_path: Path | None = None):
-        self.db_path = db_path or CACHE_DIR / "cache.db"
+        self.db_path = db_path or _default_db_path()
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._local = threading.local()
 
     @property

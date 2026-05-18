@@ -7,27 +7,42 @@ Thanks for your interest in improving photochron! This document covers the devel
 Requires Python 3.12+.
 
 ```bash
-git clone https://github.com/micschr0/image-age-sorter.git
-cd image-age-sorter
+git clone https://github.com/micschr0/photochron.git
+cd photochron
 
+# Recommended:
+uv sync --group dev
+uv run pre-commit install
+
+# Plain-pip fallback (requires pip >= 25 for --group):
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-
-pip install -e ".[dev]"
+pip install -e . --group dev
 pre-commit install
 ```
 
 ## Running tests
 
+The fastest path is the `Makefile`:
+
+```bash
+make check       # lint + type + unit tests (what CI runs)
+make test-fast   # unit tests only, no integration deps
+make test        # full suite (needs Ollama + InsightFace installed)
+make cov         # unit tests with coverage report
+```
+
+Equivalent raw commands:
+
 ```bash
 # Unit tests only (fast, no external models required)
-pytest -v tests/ -m "not integration"
+uv run pytest tests/unit -m "not integration"
 
 # Full suite (requires Ollama + InsightFace models locally)
-pytest -v tests/
+uv run pytest tests/
 
 # With coverage
-pytest --cov=src/photochron --cov-report=term-missing
+uv run pytest tests/unit --cov=src/photochron --cov-report=term-missing
 ```
 
 Coverage target: 80% (enforced via `pyproject.toml`).
@@ -35,11 +50,12 @@ Coverage target: 80% (enforced via `pyproject.toml`).
 ## Lint & type-check
 
 ```bash
-ruff check .
-mypy src/
+make lint        # ruff check .
+make type        # mypy src/
+make fmt         # ruff format + ruff --fix
 ```
 
-Both are enforced via `pre-commit` and in CI.
+Both lint and type-check are enforced via `pre-commit` and in CI.
 
 ## Coding conventions
 
@@ -77,8 +93,8 @@ possible; otherwise kept as strings.
 - Branch from `main`.
 - Keep PRs focused — one logical change per PR.
 - Include tests for new behavior.
-- Update `docs/CHANGELOG.md` for user-visible changes.
-- Run `ruff check . && mypy src/ && pytest -v tests/ -m "not integration"` before pushing.
+- Update `CHANGELOG.md` for user-visible changes.
+- Run `make check` before pushing.
 
 ## Reporting bugs
 
