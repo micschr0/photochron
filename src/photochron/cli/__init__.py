@@ -2,9 +2,6 @@
 photochron CLI interface using Typer.
 """
 
-from pathlib import Path
-from typing import Optional
-
 import typer
 
 from .commands import cluster, doctor, rerun, run, status
@@ -18,10 +15,14 @@ app = typer.Typer(
 
 # Add commands
 app.command(name="run", help="Run full pipeline on input directory")(run)
-app.command(name="cluster", help="Face clustering and person assignment")(cluster)
-app.command(name="rerun", help="Re-run specific pipeline stage")(rerun)
 app.command(name="status", help="Show pipeline progress and cache stats")(status)
 app.command(name="doctor", help="Diagnose the photochron environment (read-only)")(doctor)
+
+# Hidden / not-yet-implemented commands. They still respond to `--help` so the
+# planned UX is discoverable to contributors, but they are not advertised in the
+# top-level `--help` listing until they actually do something.
+app.command(name="cluster", help="Face clustering and person assignment (not yet implemented)", hidden=True)(cluster)
+app.command(name="rerun", help="Re-run specific pipeline stage (not yet implemented)", hidden=True)(rerun)
 
 
 @app.callback(invoke_without_command=True)

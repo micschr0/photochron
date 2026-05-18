@@ -8,21 +8,22 @@ This directory contains user-facing documentation for photochron.
 - **[Pipeline Architecture](pipeline.md)**: Detailed explanation of the 6-stage pipeline
 - **[Configuration Reference](configuration.md)**: Complete configuration options and environment variables
 - **[Testing Strategy](testing.md)**: Comprehensive test suite documentation and test organization
-- **[Changelog](CHANGELOG.md)**: Version history and release notes
+- **[Changelog](../CHANGELOG.md)**: Version history and release notes
 
 ## Quick Start
 
 ### Installation
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd image-age-sorter
+git clone https://github.com/micschr0/photochron.git
+cd photochron
 
-# Create virtual environment
+# Recommended (uv handles the lockfile automatically):
+uv sync
+
+# Or with plain pip:
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
 pip install -e .
 ```
 

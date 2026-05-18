@@ -11,11 +11,3 @@ All inference runs fully on-device. No data leaves the machine.
 __version__ = "0.1.0"
 __author__ = "photochron Team"
 __license__ = "AGPL-3.0-or-later"
-
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-CACHE_DIR = PROJECT_ROOT / ".photochron"
-
-# Ensure cache directory exists
-CACHE_DIR.mkdir(exist_ok=True)

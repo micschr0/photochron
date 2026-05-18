@@ -90,12 +90,15 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 Requires **Python 3.12+** and [Ollama](https://ollama.com) (for the local vision LLM).
 
 ```bash
-git clone https://github.com/micschr0/image-age-sorter.git
-cd image-age-sorter
+git clone https://github.com/micschr0/photochron.git
+cd photochron
 
+# Recommended (uv handles the lockfile automatically):
+uv sync
+
+# Or with plain pip:
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-
 pip install -e .
 ```
 
@@ -128,7 +131,7 @@ See [docs/configuration.md](docs/configuration.md) for all options.
 - [Ollama setup](docs/ollama-setup.md) — installing the local vision LLM
 - [Performance tuning & benchmarks](docs/performance.md) — Apple-Silicon knobs, `photochron doctor`, `scripts/bench.py`
 - [Testing](docs/testing.md) — test suite layout and conventions
-- [Changelog](docs/CHANGELOG.md)
+- [Changelog](CHANGELOG.md)
 
 ---
 
