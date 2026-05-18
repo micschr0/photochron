@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,12 +11,18 @@ license = "AGPL-3.0-or-later"
 authors = [
     {name = "photochron Contributors"}
 ]
+# Note: with PEP 639 `license = "AGPL-3.0-or-later"`, setuptools >= 77 forbids
+# the legacy `License :: ...` classifier (which would duplicate the SPDX
+# expression). The license is therefore encoded only in the field above.
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Graphics",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
@@ -35,14 +41,11 @@ dependencies = [
     "loguru>=0.7.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0.0",
-    "pre-commit>=3.0.0",
-]
+[project.urls]
+Homepage = "https://github.com/micschr0/photochron"
+Repository = "https://github.com/micschr0/photochron"
+Issues = "https://github.com/micschr0/photochron/issues"
+Changelog = "https://github.com/micschr0/photochron/blob/main/CHANGELOG.md"
 
 [project.scripts]
 photochron = "photochron.cli:app"
@@ -114,7 +117,13 @@ exclude_lines = [
 fail_under = 80
 
 [dependency-groups]
+# PEP 735 dev group. Single source of truth — preferred over the deprecated
+# `[project.optional-dependencies]` block.
 dev = [
     "mypy>=1.20.0",
     "ruff>=0.15.10",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pre-commit>=3.0.0",
+    "types-pyyaml>=6.0.0",
 ]

@@ -1,32 +1,54 @@
+# Pre-commit hooks.
+#
+# Recommended setup:
+#   uv sync --group dev
+#   uv run pre-commit install
+#
+# Run on demand:
+#   uv run pre-commit run --all-files
+#
+# Hook versions are bumped via `pre-commit autoupdate`. CI runs the same
+# hooks via `.github/workflows/ci.yml` so contributors who forget to install
+# pre-commit locally are still caught.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-toml
       - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.0
+    rev: v0.15.13
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.0
+    rev: v1.20.0
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic]
+        additional_dependencies: [pydantic, types-pyyaml]
+        # Keep mypy scoped to src/ so it doesn't try to type-check the test
+        # suite (which deliberately leans on `Any` for fixtures/mocks).
+        files: ^src/
+        args: [--config-file=pyproject.toml]
 
+  # Push-time test gate: unit tests only. The full suite (integration) needs
+  # Ollama + InsightFace running and is intentionally skipped here so `git
+  # push` works on machines without the ML stack.
   - repo: local
     hooks:
-      - id: pytest
-        name: pytest
-        entry: python -m pytest tests/ -x
+      - id: pytest-unit
+        name: pytest (unit only)
+        entry: uv run pytest tests/unit -x -q -m "not integration"
         language: system
         pass_filenames: false
         always_run: true
-        stages: [push]
+        stages: [pre-push]
