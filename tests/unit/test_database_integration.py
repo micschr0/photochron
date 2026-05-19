@@ -16,7 +16,7 @@ from photochron.models import (
 )
 from photochron.store import DatabaseStore
 from photochron.store.queries import QueryHelper
-from photochron.store.schema import create_schema, get_schema_version
+from photochron.store.schema import SCHEMA_VERSION, create_schema, get_schema_version
 
 
 class TestDatabaseTransactionIntegrity:
@@ -654,13 +654,13 @@ class TestDatabaseSchemaCompliance:
 
             # Check schema version
             version = get_schema_version(conn)
-            assert version == 1
+            assert version == SCHEMA_VERSION
 
             # Verify schema_setup record exists
             cursor = conn.execute("SELECT * FROM pipeline_runs WHERE run_id = 'schema_setup'")
             row = cursor.fetchone()
             assert row is not None
-            assert row["schema_version"] == 1
+            assert row["schema_version"] == SCHEMA_VERSION
             assert row["status"] == "completed"
 
     def test_table_constraints_are_enforced(self, database_store: DatabaseStore):
@@ -772,7 +772,7 @@ class TestDatabaseSchemaCompliance:
 
             # Should still have valid schema
             version = get_schema_version(conn)
-            assert version == 1
+            assert version == SCHEMA_VERSION
 
             # Should be able to insert data
             cursor = conn.execute(

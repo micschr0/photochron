@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from photochron.pipeline import RunContext
 from photochron.pipeline.stages.ingestion import IngestionStage
 
 
@@ -32,12 +33,18 @@ def image_paths(tmp_path: Path) -> list[Path]:
 def _make_stage(workers: int, input_dir: Path) -> IngestionStage:
     stage = IngestionStage()
     stage.config = Mock()
-    stage.config.input_dir = str(input_dir)
     stage.config.cache_dir = str(input_dir / ".photochron")
     stage.config.ingestion = Mock()
     stage.config.ingestion.supported_formats = [".jpg"]
     stage.config.ingestion.workers = workers
     stage.supported_extensions = {".jpg"}
+    stage.bind_context(
+        RunContext(
+            run_id="test_run",
+            config_hash="test_hash",
+            input_dir=input_dir,
+        )
+    )
     return stage
 
 

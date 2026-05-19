@@ -10,7 +10,20 @@ import pytest
 from PIL import Image
 
 from photochron.config import Config
+from photochron.pipeline import RunContext
 from photochron.pipeline.stages.ingestion import IngestionStage
+
+
+def _bind_input(stage: IngestionStage, input_dir: str | Path) -> None:
+    """Bind a minimal RunContext so `stage.run` has somewhere to read the
+    input directory from. Mirrors what PipelineRunner does."""
+    stage.bind_context(
+        RunContext(
+            run_id="test_run",
+            config_hash="test_hash",
+            input_dir=Path(input_dir),
+        )
+    )
 
 
 class TestIngestionStage:
@@ -21,8 +34,8 @@ class TestIngestionStage:
         """Create an IngestionStage instance with mocked config."""
         stage = IngestionStage()
         stage.config = Mock(spec=Config)
-        stage.config.input_dir = "/fake/input"
         stage.config.cache_dir = "/fake/cache"
+        _bind_input(stage, "/fake/input")
         return stage
 
     @pytest.fixture
@@ -51,7 +64,7 @@ class TestIngestionStage:
 
     def test_scan_image_files(self, stage, temp_image_dir):
         """Test scanning for image files."""
-        stage.config.input_dir = temp_image_dir
+        _bind_input(stage, temp_image_dir)
         image_files = stage._scan_image_files(Path(temp_image_dir))
 
         # Should find both jpg and png
@@ -61,7 +74,7 @@ class TestIngestionStage:
 
     def test_scan_image_files_empty(self, stage, tmp_path):
         """Test scanning empty directory."""
-        stage.config.input_dir = str(tmp_path)
+        _bind_input(stage, tmp_path)
         image_files = stage._scan_image_files(tmp_path)
         assert image_files == []
 
@@ -229,7 +242,6 @@ class TestIngestionStage:
                 cache_dir=temp_image_dir + "/cache",
                 thumbs_dir=temp_image_dir + "/cache/thumbs",
                 output_dir=temp_image_dir + "/output",
-                input_dir=temp_image_dir,
             ),
             models=ConfigModels(
                 insightface_version="test",
@@ -254,6 +266,7 @@ class TestIngestionStage:
                 return_value=database_store,
             ):
                 stage = IngestionStage()
+                _bind_input(stage, temp_image_dir)
 
                 # Run the stage
                 run_id = "test_integration_run"

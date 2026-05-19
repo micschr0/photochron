@@ -12,7 +12,7 @@ from photochron.models import (
     PipelineRunCreate,
 )
 from photochron.store.queries import QueryHelper
-from photochron.store.schema import create_schema, get_schema_version
+from photochron.store.schema import SCHEMA_VERSION, create_schema, get_schema_version
 
 
 def test_database_store_creation(database_store):
@@ -67,7 +67,7 @@ def test_schema_creation(database_store):
 
         # Check schema version
         version = get_schema_version(conn)
-        assert version == 1
+        assert version == SCHEMA_VERSION
 
 
 def test_query_helper_photo_operations(database_store):

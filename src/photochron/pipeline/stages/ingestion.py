@@ -58,12 +58,12 @@ class IngestionStage(PipelineStage):
         """
         logger.info(f"Starting ingestion stage for run {run_id}")
 
-        if not self.config.input_dir:
+        if self.context is None or self.context.input_dir is None:
             raise RuntimeError(
-                "input_dir is not set – call PipelineRunner.run_pipeline() "
-                "or assign config.input_dir before running this stage."
+                "input_dir is not set – call PipelineRunner.run_pipeline() so it "
+                "binds a RunContext before invoking the stage."
             )
-        input_dir = Path(self.config.input_dir)
+        input_dir = Path(self.context.input_dir)
         cache_dir = Path(self.config.cache_dir)
         downsampled_dir = cache_dir / "downsampled"
         downsampled_dir.mkdir(parents=True, exist_ok=True)
