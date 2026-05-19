@@ -75,14 +75,11 @@ def test_mark_failed_persists_error(store) -> None:
     stage.mark_failed("r1", "boom")
     with store.transaction() as conn:
         row = conn.execute(
-            "SELECT status, error_message FROM pipeline_stage_runs "
-            "WHERE run_id='r1' AND stage_name='dummy'"
+            "SELECT status, error_message FROM pipeline_stage_runs WHERE run_id='r1' AND stage_name='dummy'"
         ).fetchone()
         assert row["status"] == "failed"
         assert row["error_message"] == "boom"
-        run_row = conn.execute(
-            "SELECT status, error_message FROM pipeline_runs WHERE run_id='r1'"
-        ).fetchone()
+        run_row = conn.execute("SELECT status, error_message FROM pipeline_runs WHERE run_id='r1'").fetchone()
         assert run_row["status"] == "failed"
         assert run_row["error_message"] == "boom"
 
@@ -92,7 +89,5 @@ def test_mark_failed_truncates_long_errors(store) -> None:
     stage = _DummyStage()
     stage.mark_failed("r1", "x" * 5000)
     with store.transaction() as conn:
-        row = conn.execute(
-            "SELECT error_message FROM pipeline_stage_runs WHERE run_id='r1'"
-        ).fetchone()
+        row = conn.execute("SELECT error_message FROM pipeline_stage_runs WHERE run_id='r1'").fetchone()
         assert len(row["error_message"]) == 1024
