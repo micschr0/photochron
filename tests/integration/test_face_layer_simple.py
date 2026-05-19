@@ -20,7 +20,7 @@ def _create_pipeline_run(store: DatabaseStore, run_id: str, config_hash: str = "
     with store.transaction() as conn:
         conn.execute(
             """
-            INSERT INTO pipeline_runs 
+            INSERT INTO pipeline_runs
             (run_id, config_hash, start_time, status)
             VALUES (?, ?, ?, ?)
             """,
@@ -152,7 +152,7 @@ def test_duplicate_detection(database_store, monkeypatch):
         # Insert a face record for this photo
         conn.execute(
             """
-            INSERT INTO faces 
+            INSERT INTO faces
             (photo_id, confidence, bbox_x1, bbox_y1, bbox_x2, bbox_y2)
             VALUES (?, ?, ?, ?, ?, ?)
             """,

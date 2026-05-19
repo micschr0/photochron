@@ -49,8 +49,8 @@ def test_schema_contains_all_tables(database_store):
     """Verify all required tables exist in schema."""
     with database_store.transaction() as conn:
         cursor = conn.execute("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' 
+            SELECT name FROM sqlite_master
+            WHERE type='table'
             AND name NOT LIKE 'sqlite_%'
         """)
         tables = {row[0] for row in cursor.fetchall()}
@@ -246,7 +246,7 @@ def test_schema_indices(database_store):
     """Verify that important indices exist."""
     with database_store.transaction() as conn:
         cursor = conn.execute("""
-            SELECT name, tbl_name, sql FROM sqlite_master 
+            SELECT name, tbl_name, sql FROM sqlite_master
             WHERE type='index' AND name NOT LIKE 'sqlite_%'
         """)
         indices = {(row[0], row[1]) for row in cursor.fetchall()}  # (index_name, table_name)

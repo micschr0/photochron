@@ -362,7 +362,7 @@ class IngestionStage(PipelineStage):
             cursor = conn.execute(
                 """
                 SELECT perceptual_hash, file_path, downsample_path, exif_datetime, make, model
-                FROM photos 
+                FROM photos
                 WHERE content_hash = ?
                 LIMIT 1
                 """,
@@ -400,7 +400,7 @@ class IngestionStage(PipelineStage):
             # Use INSERT OR REPLACE to handle duplicates
             conn.execute(
                 """
-                INSERT OR REPLACE INTO photos 
+                INSERT OR REPLACE INTO photos
                 (content_hash, file_path, downsample_path, exif_datetime, make, model, perceptual_hash)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,

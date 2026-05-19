@@ -22,7 +22,7 @@ def _create_pipeline_run(store: DatabaseStore, run_id: str, config_hash: str = "
     with store.transaction() as conn:
         conn.execute(
             """
-            INSERT INTO pipeline_runs 
+            INSERT INTO pipeline_runs
             (run_id, config_hash, start_time, status)
             VALUES (?, ?, ?, ?)
             """,
@@ -200,8 +200,8 @@ def test_context_layer_duplicate_processing(database_store, monkeypatch):
         # Insert a context record for this photo
         conn.execute(
             """
-            INSERT INTO context 
-            (photo_id, decade, decade_confidence, season, season_confidence, 
+            INSERT INTO context
+            (photo_id, decade, decade_confidence, season, season_confidence,
              event_hint, event_confidence, photo_medium, photo_medium_confidence,
              uncertainty_flag, hypothesis_notes, raw_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

@@ -165,8 +165,8 @@ persons:
   - id: person_mama
     name: "Mama"
     birthday: "1983-03-15"
-  
-  - id: person_papa  
+
+  - id: person_papa
     name: "Papa"
     birthday: "1980-07-22"
 
@@ -177,7 +177,7 @@ events:
     type: hard
     photos_after:
       - "IMG_042.jpg"
-  
+
   - name: "Family Vacation"
     date: "2005-06-15"
     type: soft

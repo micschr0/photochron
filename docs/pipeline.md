@@ -25,8 +25,8 @@ flowchart LR
 ```
 
 ## Stage 1: Ingestion
-**Trigger**: new run or `--rerun-stage ingestion`  
-**Input**: JPEG files in input directory  
+**Trigger**: new run or `--rerun-stage ingestion`
+**Input**: JPEG files in input directory
 **Key logic**:
 - MD5 content hash per file (rename-safe cache key)
 - Downsample to 1024px longest edge → save to `.photochron/thumbs/`
@@ -34,24 +34,24 @@ flowchart LR
 - Perceptual hash for near-duplicate detection (threshold: 0.95)
 - Skip if hash already in `photos` table
 
-**Output table**: `photos`  
+**Output table**: `photos`
 **Invalidation**: content hash change
 
 ## Stage 2: Face Layer
-**Trigger**: new photos in `photos` without `faces` rows  
-**Model**: InsightFace buffalo_l via ONNX Runtime. Current providers: CPU (default) or CUDA when `face.use_gpu: true`. CoreML Execution Provider for Apple Silicon is on the roadmap (see `docs/performance.md` — upcoming), not yet wired.  
+**Trigger**: new photos in `photos` without `faces` rows
+**Model**: InsightFace buffalo_l via ONNX Runtime. Current providers: CPU (default) or CUDA when `face.use_gpu: true`. CoreML Execution Provider for Apple Silicon is on the roadmap (see `docs/performance.md` — upcoming), not yet wired.
 **Key logic**:
 - Detect all faces, compute embeddings + age estimate per face
 - Person identity: compare embedding to known persons (cosine similarity > threshold)
 - Unknown faces go to cluster pool → resolved by user in `cluster` command
 - Output: age_estimate (float), age_std (float), person_id (FK or NULL), bbox
 
-**Output table**: `faces`  
+**Output table**: `faces`
 **Latency**: ~100–300ms/image on M3
 
 ## Stage 3: Context Layer
-**Trigger**: new photos in `photos` without `context` rows  
-**Model**: Ollama — suggested primary `llava-next:7b`, fallback `moondream2` (both opt-in, see `config.yaml`). Ollama picks its own backend: MLX (Apple's ML framework) on Apple Silicon starting with Ollama 0.19, llama.cpp/Metal on older Ollama on Apple Silicon, llama.cpp/CUDA or CPU elsewhere. photochron does not select the backend — it only forwards tuning knobs (`keep_alive`, `num_ctx`, `num_gpu`) to Ollama.  
+**Trigger**: new photos in `photos` without `context` rows
+**Model**: Ollama — suggested primary `llava-next:7b`, fallback `moondream2` (both opt-in, see `config.yaml`). Ollama picks its own backend: MLX (Apple's ML framework) on Apple Silicon starting with Ollama 0.19, llama.cpp/Metal on older Ollama on Apple Silicon, llama.cpp/CUDA or CPU elsewhere. photochron does not select the backend — it only forwards tuning knobs (`keep_alive`, `num_ctx`, `num_gpu`) to Ollama.
 **Key logic**:
 
 ### Configuration and Health Management
@@ -103,7 +103,7 @@ See [Testing Strategy](testing.md) for complete test documentation.
 - `memory_critical_threshold_mb`: Memory critical threshold in MB (default: `50`)
 - `memory_retry_delay_seconds`: Delay in seconds to wait when memory is critically low (default: `30`)
 
-**Output table**: `context`  
+**Output table**: `context`
 **Latency** (order-of-magnitude, Apple Silicon M-series with Metal; measure on your own hardware): ~2–5s/image for llava-next:7b once the model is warm, ~0.5–1.5s/image for moondream2. Cold loads add several seconds – configure `keep_alive` (default `"30m"`) to keep the model resident between photos.
 
 **Prompt contract (output schema)**:
@@ -120,8 +120,8 @@ See [Testing Strategy](testing.md) for complete test documentation.
 **Configuration Reference**: See `docs/configuration.md` for complete configuration options and environment variable overrides.
 
 ## Stage 4: Anchor Layer
-**Trigger**: runs before Ranking Engine on every run (fast, no inference)  
-**Input**: `anchors.yaml`  
+**Trigger**: runs before Ranking Engine on every run (fast, no inference)
+**Input**: `anchors.yaml`
 **Key logic**:
 - Load persons + birthdays → create `AnchorMap` (person_id → birthday)
 - Resolve birthday constraints: age_estimate + birthday → estimated_photo_year
@@ -131,7 +131,7 @@ See [Testing Strategy](testing.md) for complete test documentation.
 **Output**: in-memory `ConstraintSet` passed to Ranking Engine (not persisted separately)
 
 ## Stage 5: Ranking Engine
-**Trigger**: after Stages 2–4 complete  
+**Trigger**: after Stages 2–4 complete
 **Key logic**:
 
 **Step 1 – Weighted date estimate per photo**:
@@ -146,8 +146,8 @@ estimated_date = weighted_combine(
 
 **Step 2 – Apply constraints** (hard first, then soft)
 
-**Step 3 – Pairwise LLM comparison for ambiguous pairs**  
-(confidence bands overlap → ask LLM: "Which photo is earlier?")  
+**Step 3 – Pairwise LLM comparison for ambiguous pairs**
+(confidence bands overlap → ask LLM: "Which photo is earlier?")
 Cap: max 500 pairs per run.
 
 **Step 4 – Topological sort** → final `sort_rank` per photo
@@ -155,14 +155,14 @@ Cap: max 500 pairs per run.
 **Output table**: `rankings`
 
 ## Stage 6: Output Layer
-**Trigger**: after Ranking Engine  
+**Trigger**: after Ranking Engine
 **Two output modes** (both active on full run):
 
-**Mode A – Renamed copies**:  
+**Mode A – Renamed copies**:
 `{output_dir}/renamed/{sort_rank:04d}_{estimated_year}-est_{original_name}.jpg`
 
-**Mode B – EXIF-enriched copies**:  
-`{output_dir}/exif_enriched/{original_name}.jpg`  
+**Mode B – EXIF-enriched copies**:
+`{output_dir}/exif_enriched/{original_name}.jpg`
 EXIF fields written:
 - `DateTimeOriginal`: `{year}:01:01 00:00:00` (month/day if known)
 - `ImageDescription`: "Est. 1987 ±2yr – Mama ~4yr, summer, print_scan"
