@@ -1,0 +1,109 @@
+name: CI
+
+# Runs on every PR and every push to main. Three jobs:
+#   * lint           ruff check + ruff format --check
+#   * type           mypy src/
+#   * test-fast      pytest tests/unit (no integration markers, no Ollama,
+#                    no InsightFace) on ubuntu + macOS
+#
+# All jobs use uv with its built-in cache. No secrets are referenced, so
+# the workflow runs on forks too. The full integration suite (which needs
+# a local Ollama daemon and InsightFace model weights) is *not* run in CI
+# — it remains a `make test` local-only command, documented in CONTRIBUTING.
+#
+# Security note: this workflow never interpolates untrusted PR/issue text
+# into shell commands. The only ${{ ... }} expressions used are `github.workflow`,
+# `github.ref`, `github.event_name`, and matrix values — all controlled by
+# repo maintainers or GitHub itself.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install dev tools
+        run: uv tool install ruff
+      - name: ruff check
+        run: uv tool run ruff check .
+      - name: ruff format --check
+        run: uv tool run ruff format --check .
+
+  type:
+    name: Type-check
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install project (no ML deps) and dev tools
+        # We skip insightface / onnxruntime in the type-check job because
+        # they need a C toolchain and contribute zero type information to
+        # the surface we care about (mypy --config-file=pyproject.toml only
+        # walks src/).
+        run: |
+          uv venv .venv-ci
+          uv pip install --python .venv-ci/bin/python \
+            pydantic pyyaml loguru typer rich pillow piexif imagehash \
+            ollama mypy types-pyyaml
+          uv pip install --python .venv-ci/bin/python -e . --no-deps
+      - name: mypy
+        run: .venv-ci/bin/mypy src/
+
+  test-fast:
+    name: Unit tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install runtime + dev deps (no insightface)
+        # InsightFace needs a C toolchain and Python.h on Linux; we skip it
+        # for the unit-test job because the unit suite mocks it out.
+        run: |
+          uv venv .venv-ci
+          uv pip install --python .venv-ci/bin/python \
+            pydantic pyyaml loguru typer rich pillow piexif imagehash \
+            ollama onnxruntime pytest pytest-cov
+          uv pip install --python .venv-ci/bin/python -e . --no-deps
+      - name: pytest (unit only)
+        run: |
+          .venv-ci/bin/pytest tests/unit -m "not integration" \
+            --cov=src/photochron --cov-report=term-missing \
+            --junitxml=junit.xml
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: |
+            .coverage
+            junit.xml
+          if-no-files-found: ignore
+          retention-days: 7

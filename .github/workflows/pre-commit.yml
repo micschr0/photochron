@@ -1,0 +1,28 @@
+name: pre-commit
+
+# Runs `pre-commit run --all-files` so contributors who forgot to install
+# the local git hook are still caught. Pinned in lockstep with
+# .pre-commit-config.yaml.
+#
+# Security note: no untrusted PR/issue text is interpolated into shell
+# commands; the workflow only consults workflow-level metadata.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install pre-commit
+      - run: pre-commit run --all-files --show-diff-on-failure
