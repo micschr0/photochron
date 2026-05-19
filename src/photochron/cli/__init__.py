@@ -4,7 +4,7 @@ photochron CLI interface using Typer.
 
 import typer
 
-from .commands import cluster, doctor, rerun, run, status
+from .commands import cluster, doctor, init, rerun, review, run, status
 
 # Create Typer app
 app = typer.Typer(
@@ -14,9 +14,11 @@ app = typer.Typer(
 )
 
 # Add commands
+app.command(name="init", help="Interactive first-time setup wizard")(init)
 app.command(name="run", help="Run full pipeline on input directory")(run)
 app.command(name="status", help="Show pipeline progress and cache stats")(status)
 app.command(name="doctor", help="Diagnose the photochron environment (read-only)")(doctor)
+app.command(name="review", help="Walk low-confidence photos for manual review")(review)
 
 # Hidden / not-yet-implemented commands. They still respond to `--help` so the
 # planned UX is discoverable to contributors, but they are not advertised in the

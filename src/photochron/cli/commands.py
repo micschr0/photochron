@@ -2,9 +2,13 @@
 CLI command implementations.
 """
 
+from __future__ import annotations
+
+import json as _json
 from pathlib import Path
 
 import typer
+from loguru import logger
 from rich.console import Console
 
 console = Console()
@@ -16,6 +20,55 @@ def _print_privacy_banner() -> None:
         "[yellow]photochron is intended for private family photos. "
         "Treat EXIF data (and any GPS coordinates you enable) as sensitive.[/yellow]"
     )
+
+
+# ---------------------------------------------------------------------------
+# photochron init
+# ---------------------------------------------------------------------------
+
+
+def init(
+    target_dir: Path = typer.Option(
+        Path("."),
+        "--dir",
+        "-d",
+        help="Directory where config.yaml (and optionally anchors.yaml) will be written.",
+        file_okay=False,
+        dir_okay=True,
+        resolve_path=True,
+    ),
+    no_input: bool = typer.Option(
+        False,
+        "--no-input",
+        help="Skip every prompt and write safe defaults (CI / scripting friendly).",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Overwrite existing files without asking.",
+    ),
+) -> None:
+    """Interactive first-time setup.
+
+    Asks for photo + output dirs, opt-in face / vision-LLM model names, GPS
+    preference, and whether to drop an anchors.yaml template. Writes a clean
+    config.yaml and prints a numbered "what to do next" list at the end.
+    """
+    from photochron.cli.wizard import (
+        collect_answers,
+        print_next_steps,
+        write_files,
+    )
+
+    answers = collect_answers(no_input=no_input)
+    config_path, anchors_path = write_files(answers, target_dir, no_input=no_input, force=force)
+    print_next_steps(config_path, anchors_path)
+
+
+# ---------------------------------------------------------------------------
+# photochron run
+# ---------------------------------------------------------------------------
 
 
 def run(
@@ -87,11 +140,26 @@ def run(
             dry_run=False,
         )
     except PipelineConfigurationError as e:
-        console.print(f"[red]Configuration error:[/red] {e}")
+        # The first message most users will see when something's off. Make
+        # it actionable: name the next command to run.
+        console.print(f"\n[red]Configuration error:[/red] {e}")
+        console.print(
+            "[dim]Hint: run `photochron init` to set up the missing models, then `photochron doctor` to verify.[/dim]"
+        )
         raise typer.Exit(2) from e
+    except Exception as e:  # noqa: BLE001 — user-facing safety net
+        logger.exception("Pipeline run failed")
+        console.print(f"\n[red]Pipeline failed:[/red] {e}")
+        console.print("[dim]Hint: re-run with `-v` for DEBUG logs, or check `.photochron/logs/photochron.log`.[/dim]")
+        raise typer.Exit(1) from e
 
     console.print(f"\n[green]✓[/green] Pipeline run completed: {run_id}")
     console.print(f"  [dim]Output in: {output_dir}[/dim]")
+
+
+# ---------------------------------------------------------------------------
+# photochron cluster / rerun (still stubs, kept hidden in CLI wiring)
+# ---------------------------------------------------------------------------
 
 
 def cluster(
@@ -161,138 +229,186 @@ def rerun(
     console.print("  3. Update dependent stages if needed")
 
 
-def status() -> None:
-    """
-    Show pipeline progress and cache stats.
+# ---------------------------------------------------------------------------
+# photochron status
+# ---------------------------------------------------------------------------
 
-    Displays statistics about cached results, pipeline runs,
-    and overall system status.
+
+def status(
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON instead of a Rich table.",
+    ),
+) -> None:
+    """Show pipeline progress and cache stats.
+
+    Displays statistics about cached results, pipeline runs, and overall
+    system status.
     """
     from photochron.store import get_store
 
-    console.print("[bold]photochron Status[/bold]")
+    payload: dict[str, object] = {"database": None, "cache": {}, "latest_run": None, "face_backend": {}}
 
     try:
         store = get_store()
+        payload["database"] = str(store.db_path)
         with store.transaction() as conn:
-            # Get counts from database
-            photo_count = conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
-            face_count = conn.execute("SELECT COUNT(*) FROM faces").fetchone()[0]
-            context_count = conn.execute("SELECT COUNT(*) FROM context").fetchone()[0]
-            ranking_count = conn.execute("SELECT COUNT(*) FROM rankings").fetchone()[0]
-
-            # Get latest pipeline run
+            payload["cache"] = {
+                "photos": conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0],
+                "faces": conn.execute("SELECT COUNT(*) FROM faces").fetchone()[0],
+                "context": conn.execute("SELECT COUNT(*) FROM context").fetchone()[0],
+                "rankings": conn.execute("SELECT COUNT(*) FROM rankings").fetchone()[0],
+            }
             run_info = conn.execute(
                 "SELECT run_id, status, start_time, photos_processed "
                 "FROM pipeline_runs ORDER BY start_time DESC LIMIT 1"
             ).fetchone()
+            if run_info:
+                payload["latest_run"] = {
+                    "run_id": run_info[0],
+                    "status": run_info[1],
+                    "started": run_info[2],
+                    "photos_processed": run_info[3],
+                }
+    except Exception as e:  # noqa: BLE001
+        payload["database_error"] = str(e)
+        logger.exception("status: database read failed")
 
-        console.print(f"[dim]Database: {store.db_path}[/dim]")
+    try:
+        from photochron.config import get_config
+        from photochron.face.insightface_wrapper import resolve_providers
+
+        cfg = get_config()
+        providers, _ = resolve_providers(cfg.face.backend)
+        payload["face_backend"] = {"configured": cfg.face.backend, "resolved": list(providers)}
+    except Exception as e:  # noqa: BLE001
+        payload["face_backend_error"] = str(e)
+        logger.exception("status: face backend probe failed")
+
+    if as_json:
+        typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    # Rich rendering
+    console.print("[bold]photochron Status[/bold]")
+    if payload.get("database"):
+        console.print(f"[dim]Database: {payload['database']}[/dim]")
         console.print()
+        cache = payload["cache"] or {}
         console.print("[bold]Cache Statistics[/bold]")
-        console.print(f"  Photos: {photo_count}")
-        console.print(f"  Faces: {face_count}")
-        console.print(f"  Context analyses: {context_count}")
-        console.print(f"  Rankings: {ranking_count}")
+        console.print(f"  Photos: {cache.get('photos', 0)}")
+        console.print(f"  Faces: {cache.get('faces', 0)}")
+        console.print(f"  Context analyses: {cache.get('context', 0)}")
+        console.print(f"  Rankings: {cache.get('rankings', 0)}")
 
-        if run_info:
+        run = payload.get("latest_run")
+        if run:
             console.print()
             console.print("[bold]Latest Pipeline Run[/bold]")
-            console.print(f"  Run ID: {run_info[0]}")
-            console.print(f"  Status: {run_info[1]}")
-            console.print(f"  Started: {run_info[2]}")
-            console.print(f"  Photos processed: {run_info[3]}")
+            console.print(f"  Run ID: {run['run_id']}")
+            console.print(f"  Status: {run['status']}")
+            console.print(f"  Started: {run['started']}")
+            console.print(f"  Photos processed: {run['photos_processed']}")
         else:
             console.print()
             console.print("[dim]No pipeline runs recorded[/dim]")
-
-    except Exception as e:
-        console.print(f"[red]Error reading database: {e}[/red]")
+    elif "database_error" in payload:
+        console.print(f"[red]Error reading database: {payload['database_error']}[/red]")
         console.print("[dim]Make sure the pipeline has been run at least once.[/dim]")
 
-    # Resolved Face backend – shows how 'auto' will be interpreted on this
-    # host so the user does not have to guess whether ANE is active. Printed
-    # even when the database is empty / unreachable.
-    try:
-        from photochron.config import get_config
-        from photochron.face.insightface_wrapper import _resolve_providers
-
-        config = get_config()
-        providers, _ = _resolve_providers(config.face.backend)
+    fb = payload.get("face_backend") or {}
+    if fb:
         console.print()
         console.print("[bold]Face Backend[/bold]")
-        console.print(f"  Configured: {config.face.backend}")
-        console.print(f"  Resolved providers: {', '.join(providers)}")
-    except Exception as e:  # noqa: BLE001 – status must never crash
-        console.print(f"[yellow]Could not resolve face backend: {e}[/yellow]")
+        console.print(f"  Configured: {fb.get('configured')}")
+        console.print(f"  Resolved providers: {', '.join(fb.get('resolved') or [])}")
+    elif "face_backend_error" in payload:
+        console.print(f"[yellow]Could not resolve face backend: {payload['face_backend_error']}[/yellow]")
 
 
-def doctor() -> None:
-    """
-    Diagnose the photochron environment.
+# ---------------------------------------------------------------------------
+# photochron doctor
+# ---------------------------------------------------------------------------
 
-    Read-only health check that reports Python/platform info, the ONNX Runtime
-    providers actually available on this host, the resolved face backend, the
-    configured models (opt-in), and the Ollama reachability status. Does not
-    download or load any models – safe to run on a fresh setup.
+
+def doctor(
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON (one object with checks + next_steps).",
+    ),
+) -> None:
+    """Diagnose the photochron environment.
+
+    Read-only health check that reports Python/platform info, the ONNX
+    Runtime providers actually available on this host, the resolved face
+    backend, the configured models (opt-in), and the Ollama reachability
+    status. Does not download or load any models.
+
+    The output ends with a numbered "Next steps:" section listing the
+    concrete commands to fix anything that's broken — UX optimised for
+    first-day use.
     """
     import platform as _platform
     import sys
 
-    _print_privacy_banner()
-    console.print("[bold]photochron doctor[/bold]")
-    console.print(f"  Python: {sys.version.split()[0]}")
-    console.print(f"  Platform: {_platform.system()} {_platform.machine()}")
+    report: dict[str, object] = {
+        "python": sys.version.split()[0],
+        "platform": f"{_platform.system()} {_platform.machine()}",
+        "onnxruntime": None,
+        "apple_silicon": None,
+        "available_providers": [],
+        "face_backend": {},
+        "configured_models": {},
+        "ollama": {},
+        "next_steps": [],
+    }
+    next_steps: list[str] = []
 
-    # onnxruntime + available providers
+    # onnxruntime + providers ----------------------------------------------
+    resolve_providers = None
+    is_apple_silicon = None
     try:
         import onnxruntime as ort
 
-        from photochron.face.insightface_wrapper import _is_apple_silicon, _resolve_providers
+        from photochron.face.insightface_wrapper import _is_apple_silicon, resolve_providers
 
-        console.print(f"  onnxruntime: {ort.__version__}")
-        console.print(f"  Apple Silicon: {'yes' if _is_apple_silicon() else 'no'}")
+        is_apple_silicon = _is_apple_silicon()
         available = ort.get_available_providers()
-        console.print("  Available ONNX Runtime providers:")
-        for p in available:
-            console.print(f"    - {p}")
+        report["onnxruntime"] = ort.__version__
+        report["apple_silicon"] = is_apple_silicon
+        report["available_providers"] = list(available)
 
-        # The official onnxruntime wheel for macOS arm64 is CPU-only; without
-        # an explicit step the user will silently run on CPU even when
-        # `face.backend: auto` looks right. Call this out loudly.
-        if _is_apple_silicon() and "CoreMLExecutionProvider" not in available:
-            console.print(
-                "[yellow]  CoreMLExecutionProvider is not available in this "
-                "onnxruntime build. The face layer will fall back to CPU.[/yellow]"
+        if is_apple_silicon and "CoreMLExecutionProvider" not in available:
+            next_steps.append(
+                "Install an onnxruntime wheel with the CoreML EP for Apple Neural Engine: "
+                'pip uninstall onnxruntime && pip install "onnxruntime-silicon" '
+                "(community project — verify the source first)."
             )
-            console.print("[dim]  To enable ANE/CoreML, install a wheel that ships the EP, e.g.:[/dim]")
-            console.print('[dim]    pip uninstall onnxruntime && pip install "onnxruntime-silicon"[/dim]')
-            console.print("[dim]  (community project – verify the source before installing)[/dim]")
     except ImportError:
-        console.print("[yellow]  onnxruntime: not installed[/yellow]")
-        _resolve_providers = None  # type: ignore[assignment]
+        report["onnxruntime"] = None
+        next_steps.append("Install onnxruntime: `uv pip install onnxruntime` (or `pip install onnxruntime`).")
 
-    # Resolved config (may surface opt-in gaps)
+    # Configuration ---------------------------------------------------------
     try:
         from photochron.config import get_config
 
         config = get_config()
-        console.print()
-        console.print("[bold]Configuration[/bold]")
-        face_backend = config.face.backend
-        console.print(f"  face.backend: {face_backend}")
-        if _resolve_providers is not None:
-            providers, _opts = _resolve_providers(face_backend)
-            console.print(f"  face.backend resolved → {', '.join(providers)}")
-        console.print(f"  face.model_name: {config.face.model_name!r}")
-        console.print(f"  context.primary_model: {config.context.primary_model!r}")
-        console.print(f"  context.fallback_model: {config.context.fallback_model!r}")
-        console.print(f"  context.keep_alive: {config.context.keep_alive}")
-        console.print(f"  context.num_ctx: {config.context.num_ctx}")
-        console.print(f"  context.num_gpu: {config.context.num_gpu}")
-        console.print(f"  ingestion.extract_gps: {config.ingestion.extract_gps}")
-
-        missing = []
+        report["face_backend"] = {
+            "configured": config.face.backend,
+            "resolved": (list(resolve_providers(config.face.backend)[0]) if resolve_providers else []),
+        }
+        report["configured_models"] = {
+            "face.model_name": config.face.model_name,
+            "context.primary_model": config.context.primary_model,
+            "context.fallback_model": config.context.fallback_model,
+            "context.keep_alive": config.context.keep_alive,
+            "context.num_ctx": config.context.num_ctx,
+            "context.num_gpu": config.context.num_gpu,
+            "ingestion.extract_gps": config.ingestion.extract_gps,
+        }
+        missing: list[str] = []
         if not config.face.model_name:
             missing.append("face.model_name")
         if not config.context.primary_model:
@@ -300,23 +416,112 @@ def doctor() -> None:
         if not config.context.fallback_model:
             missing.append("context.fallback_model")
         if missing:
-            console.print(
-                f"  [yellow]Opt-in models not configured: {', '.join(missing)}. "
-                "Uncomment the suggested entries in config.yaml after verifying licenses.[/yellow]"
+            report["missing_models"] = missing
+            next_steps.append(
+                f"Configure the missing opt-in models in config.yaml ({', '.join(missing)}) "
+                f"or run `photochron init` to walk through it interactively."
             )
     except Exception as e:  # noqa: BLE001
-        console.print(f"[red]Config error: {e}[/red]")
+        report["config_error"] = str(e)
+        logger.exception("doctor: config load failed")
+        next_steps.append("Fix config.yaml — see the error above. `photochron init` writes a known-good template.")
 
-    # Ollama reachability (best-effort, does not pull models)
-    console.print()
-    console.print("[bold]Ollama[/bold]")
+    # Ollama reachability ---------------------------------------------------
     try:
         import ollama  # type: ignore[import-not-found]
 
         response = ollama.list()
         models = [m.get("name", "?") for m in response.get("models", [])]
+        report["ollama"] = {"reachable": True, "installed_models": models}
+    except Exception as e:  # noqa: BLE001
+        report["ollama"] = {"reachable": False, "error": str(e)}
+        next_steps.append("Install and start Ollama (https://ollama.com), then `ollama pull llava-next:7b moondream2`.")
+
+    report["next_steps"] = next_steps
+
+    # ----------------------------------------------------------------------
+    if as_json:
+        typer.echo(_json.dumps(report, indent=2, default=str))
+        return
+
+    _print_privacy_banner()
+    console.print("[bold]photochron doctor[/bold]")
+    console.print(f"  Python: {report['python']}")
+    console.print(f"  Platform: {report['platform']}")
+
+    if report["onnxruntime"]:
+        console.print(f"  onnxruntime: {report['onnxruntime']}")
+        console.print(f"  Apple Silicon: {'yes' if is_apple_silicon else 'no'}")
+        console.print("  Available ONNX Runtime providers:")
+        for p in report["available_providers"]:
+            console.print(f"    - {p}")
+    else:
+        console.print("[yellow]  onnxruntime: not installed[/yellow]")
+
+    if "config_error" in report:
+        console.print(f"[red]Config error: {report['config_error']}[/red]")
+    else:
+        fb = report["face_backend"] or {}
+        console.print()
+        console.print("[bold]Configuration[/bold]")
+        console.print(f"  face.backend: {fb.get('configured')}")
+        if fb.get("resolved"):
+            console.print(f"  face.backend resolved → {', '.join(fb['resolved'])}")
+        for k, v in (report["configured_models"] or {}).items():
+            console.print(f"  {k}: {v!r}")
+        if report.get("missing_models"):
+            console.print(f"  [yellow]Opt-in models not configured: {', '.join(report['missing_models'])}[/yellow]")
+
+    ollama_state = report["ollama"]
+    console.print()
+    console.print("[bold]Ollama[/bold]")
+    if ollama_state.get("reachable"):
+        models = ollama_state.get("installed_models") or []
         console.print("  Reachable: yes")
         console.print(f"  Installed models: {', '.join(models) if models else '(none)'}")
-    except Exception as e:  # noqa: BLE001
-        console.print(f"[yellow]  Reachable: no ({e})[/yellow]")
-        console.print("[dim]  Install and start Ollama – see docs/ollama-setup.md.[/dim]")
+    else:
+        console.print(f"[yellow]  Reachable: no ({ollama_state.get('error')})[/yellow]")
+
+    # The killer UX feature: numbered, actionable next steps.
+    console.print()
+    if next_steps:
+        console.print("[bold]Next steps[/bold]")
+        for i, step in enumerate(next_steps, 1):
+            console.print(f"  {i}. {step}")
+    else:
+        console.print("[green]All checks passed.[/green]")
+
+
+# ---------------------------------------------------------------------------
+# photochron review (TUI for low-confidence photos)
+# ---------------------------------------------------------------------------
+
+
+def review(
+    threshold: float = typer.Option(
+        0.5,
+        "--threshold",
+        "-t",
+        min=0.0,
+        max=1.0,
+        help="Walk every photo with confidence < threshold.",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        "-n",
+        min=1,
+        help="Stop after this many photos (handy for big libraries).",
+    ),
+) -> None:
+    """Walk low-confidence photos and let the user accept, edit, or skip each.
+
+    Reads from the existing rankings table; writes accepted user edits back
+    into a new ``review_overrides`` table so a subsequent ``photochron run``
+    can honour them. (Override application lives in ``ranking/estimator``;
+    this command is currently the data-collection half.)
+    """
+    from photochron.review import run_review_tui
+
+    n = run_review_tui(threshold=threshold, limit=limit, console=console)
+    console.print(f"\n[green]✓[/green] Reviewed {n} photo(s).")

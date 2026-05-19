@@ -332,26 +332,56 @@ class PipelineRunner:
 
         stage_order = self.registry.get_dependency_order()
 
-        for stage_name in stage_order:
-            stage = self.registry.get_stage(stage_name)
-            if stage is None:
-                raise RuntimeError(f"Stage '{stage_name}' not found in registry")
+        # Rich progress bar — purely visual; falls back to dim no-op when
+        # the user passes `--quiet` (the CLI's root callback already
+        # raises the log level above INFO in that case).
+        from rich.console import Console
+        from rich.progress import (
+            BarColumn,
+            Progress,
+            SpinnerColumn,
+            TaskProgressColumn,
+            TextColumn,
+            TimeElapsedColumn,
+        )
 
-            stage.bind_context(ctx)
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.fields[stage]}"),
+            BarColumn(bar_width=None),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=Console(stderr=True),
+            transient=False,
+        )
+        overall = None
 
-            if not stage.should_run(run_id):
-                logger.info("Skipping stage {} (already completed for run {})", stage_name, run_id)
-                continue
+        with progress:
+            overall = progress.add_task("pipeline", total=len(stage_order), stage="pipeline")
 
-            with logger.contextualize(run_id=run_id, stage=stage_name):
-                logger.info("Stage starting")
-                try:
-                    stage.run(run_id, config_hash)
-                    logger.info("Stage completed")
-                except Exception as e:
-                    logger.exception("Stage failed: {}", e)
-                    stage.mark_failed(run_id, str(e))
-                    raise
+            for stage_name in stage_order:
+                stage = self.registry.get_stage(stage_name)
+                if stage is None:
+                    raise RuntimeError(f"Stage '{stage_name}' not found in registry")
+
+                stage.bind_context(ctx)
+
+                if not stage.should_run(run_id):
+                    logger.info("Skipping stage {} (already completed for run {})", stage_name, run_id)
+                    progress.update(overall, advance=1, stage=f"{stage_name} (skipped)")
+                    continue
+
+                progress.update(overall, stage=stage_name)
+                with logger.contextualize(run_id=run_id, stage=stage_name):
+                    logger.info("Stage starting")
+                    try:
+                        stage.run(run_id, config_hash)
+                        logger.info("Stage completed")
+                    except Exception as e:
+                        logger.exception("Stage failed: {}", e)
+                        stage.mark_failed(run_id, str(e))
+                        raise
+                progress.update(overall, advance=1)
 
         # Mark the whole run completed.
         store = get_store()
