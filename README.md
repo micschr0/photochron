@@ -1,5 +1,9 @@
 # photochron
 
+[![CI](https://github.com/micschr0/photochron/actions/workflows/ci.yml/badge.svg)](https://github.com/micschr0/photochron/actions/workflows/ci.yml)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL_3.0--or--later-blue.svg)](LICENSE)
+[![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
+
 > **⚠️ Early alpha — not ready for production use. Expect breaking changes.**
 
 > Local-first CLI tool that sorts digitized family photos without timestamps into chronological order — using on-device AI age estimation, visual context analysis, and user-provided anchor data (birthdays, events).
@@ -109,28 +113,41 @@ For local model setup (Ollama, InsightFace), see [docs/ollama-setup.md](docs/oll
 ## Quick start
 
 ```bash
-# Show pipeline status (functional)
-python -m photochron status
+# One-time interactive setup (writes config.yaml + optional anchors.yaml)
+python -m photochron init
+
+# Verify Ollama + InsightFace + the configured models
+python -m photochron doctor
 
 # Full pipeline run
 python -m photochron run --input ./photos --output ./photochron_output
 
 # Dry run (no file writes)
 python -m photochron run --input ./photos --dry-run
+
+# Show pipeline status / cache stats
+python -m photochron status
+
+# Walk low-confidence photos and accept / edit / skip each
+python -m photochron review --threshold 0.5
 ```
 
 Configuration lives in `config.yaml`; anchor data (persons, birthdays, events) in `anchors.yaml`.
-See [docs/configuration.md](docs/configuration.md) for all options.
+See [docs/configuration.md](docs/configuration.md) for all options, or run `photochron init` to
+walk through the choices interactively.
 
 ---
 
 ## Documentation
 
+- [Architecture map](docs/architecture.md) — feature → module reference
 - [Pipeline architecture](docs/pipeline.md) — detailed 6-stage walkthrough
 - [Configuration reference](docs/configuration.md) — all `config.yaml` options
+- [FAQ](docs/faq.md) — privacy, troubleshooting, "is my data uploaded?"
 - [Ollama setup](docs/ollama-setup.md) — installing the local vision LLM
 - [Performance tuning & benchmarks](docs/performance.md) — Apple-Silicon knobs, `photochron doctor`, `scripts/bench.py`
 - [Testing](docs/testing.md) — test suite layout and conventions
+- [Security policy](SECURITY.md) — disclosure channel and threat model
 - [Changelog](CHANGELOG.md)
 
 ---

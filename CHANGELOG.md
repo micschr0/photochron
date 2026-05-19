@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Hardening pass (audit + UX, May 2026)
+
+#### Added
+- **`photochron init`** — interactive first-time setup wizard. Collapses
+  the old "edit config.yaml, then anchors.yaml, then verify licenses,
+  then run doctor" flow into one prompt-driven session. `--no-input` and
+  `--force` for scripting.
+- **`photochron review`** — TUI that walks every photo with confidence
+  below a threshold and lets you accept / edit / skip each AI guess.
+  Edits persist into a new `review_overrides` table.
+- **`photochron doctor` next-steps + `--json`** — every detected gap
+  (missing onnxruntime, CoreML EP not available, missing model name,
+  Ollama unreachable) is now followed by an exact remediation command.
+  `--json` for scripting.
+- **`photochron status --json`** for scripted health checks.
+- **Rich progress bar** during pipeline runs (spinner + bar + elapsed
+  time, rendered on stderr).
+- **GitHub Actions CI** — lint (ruff), type-check (mypy), and unit-test
+  jobs on Ubuntu + macOS. No secrets, no heavy ML deps; the integration
+  suite remains a local `make test` command.
+- **Dependabot** — weekly `pip` + `github-actions` update PRs.
+- **`Makefile`** — `make check`, `make lint`, `make type`, `make
+  test-fast`, `make cov`, `make fmt`.
+- **`SECURITY.md`** — disclosure channel + threat model + EXIF
+  embedding caveat.
+- **`docs/faq.md`** and **`docs/architecture.md`** — first-day questions
+  and a feature → module map.
+- **`pipeline_stage_runs` ledger** (SCHEMA_VERSION=2, additive
+  migration) lets `PipelineStage.should_run` skip stages that already
+  finished for a given run_id.
+
+#### Changed
+- **Per-stage `should_run`** semantics: previously checked the whole-run
+  status; now per `(run_id, stage_name)`. Resume-after-failure works.
+- **`PipelineRunner` no longer mutates the `Config` singleton.** Frozen
+  `RunContext` bound via `stage.bind_context(ctx)`; stages read
+  `self.context.input_dir / output_dir / dry_run`.
+- **`PipelineRegistry.get_dependency_order`** uses Kahn's topological
+  sort with registration order as tiebreaker. Raises on cycles.
+- **`PipelineStage.mark_failed`** persists the error message to both the
+  per-stage ledger and `pipeline_runs.error_message` (truncated to 1024
+  chars).
+- **`face/insightface_wrapper.resolve_providers`** promoted from
+  `_resolve_providers`. Underscore alias kept for one release.
+- **Pre-commit hooks**: ruff v0.1.0 → v0.15.13; mypy → v1.20.0; push
+  hook restricted to `tests/unit -m "not integration"`.
+- **`pyproject.toml`**: single source of truth for dev deps is now
+  `[dependency-groups].dev` (PEP 735). Linux + Windows + Python 3.13
+  classifiers added. `[project.urls]` added. Legacy `License ::`
+  classifier removed.
+- **`CONTRIBUTING.md`** recommends `uv sync --group dev` and `make
+  check`.
+- **`anchors.yaml`** ships as a fully-commented-out template with a
+  banner warning instead of realistic placeholder data.
+- **`docs/__init__.py`** / **`examples/__init__.py`** deleted.
+- **CHANGELOG** moved to repo root so GitHub auto-renders it.
+
+#### Fixed
+- **(P0) broken `git clone` URL** in README, CONTRIBUTING, and
+  `docs/README.md` (pointed at non-existent `image-age-sorter` repo).
+- **(P0) import-time `mkdir`** in `photochron/__init__.py` resolved
+  into `site-packages/...` after `pip install`. Cache directory is now
+  created lazily by `DatabaseStore`.
+- **(P0) TODO-stub CLI commands** (`cluster`, `rerun`) hidden from
+  `--help`.
+- Pre-existing test bug in
+  `test_analyze_with_different_strategies_on_error`.
+- 313 → 322 passing unit tests.
+
+#### Configuration changes
+- `Config.input_dir` / `Config.dry_run` removed (they were runtime
+  inputs; moved to `RunContext`). Code that wrote
+  `get_config().input_dir = ...` now fails loudly via
+  `extra="forbid"` — migrate to
+  `PipelineRunner.run_pipeline(input_dir=..., output_dir=...,
+  dry_run=...)`.
+- SCHEMA_VERSION bumped to 2 via additive migration; existing v1
+  databases auto-upgrade on next pipeline run.
+
 ### Added
 - **Comprehensive Phase 3 testing suite**: Added extensive test coverage for Context Layer implementation:
   - **ContextAnalyzer strategy tests**: Tests for all 4 analysis strategies (DEFAULT, AGGRESSIVE, CONSERVATIVE, FAST)
