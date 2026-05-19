@@ -792,7 +792,7 @@ class TestErrorHandlingComprehensive:
             assert "No JSON found in response" in caplog.text
 
     # Test 12: Error handling with different analysis strategies
-    def test_analyze_with_different_strategies_on_error(self, mock_ollama_client, caplog):
+    def test_analyze_with_different_strategies_on_error(self, mock_ollama_client, caplog, tmp_path):
         """Test error handling with different analysis strategies."""
         strategies = [
             (AnalysisStrategy.DEFAULT, True),  # Should retry
@@ -803,6 +803,12 @@ class TestErrorHandlingComprehensive:
                 True,
             ),  # Should also retry (fast mode still retries)
         ]
+
+        # The analyzer short-circuits with "Image file does not exist" when
+        # passed a bogus path, so plant a real (empty) file before exercising
+        # the retry logic.
+        image_path = tmp_path / "test.jpg"
+        image_path.write_bytes(b"")
 
         for strategy, should_retry in strategies:
             config = ContextAnalyzerConfig(
@@ -819,7 +825,7 @@ class TestErrorHandlingComprehensive:
             # Execute - call the public analyze method with the strategy
             with patch("time.sleep"):
                 with caplog.at_level(logging.ERROR):
-                    result = analyzer.analyze("test.jpg", strategy=strategy)
+                    result = analyzer.analyze(str(image_path), strategy=strategy)
 
             # Verify
             assert result is None
@@ -828,11 +834,11 @@ class TestErrorHandlingComprehensive:
                 # Should have retried (initial + max_retries)
                 # Note: All strategies with enable_retries=True should retry
                 assert mock_ollama_client.analyze_image_context.call_count >= 3
-                assert "Primary model analysis failed after" in caplog.text or "Analysis failed after" in caplog.text
+                assert "analysis failed after" in caplog.text
             else:
                 # If a strategy shouldn't retry, it would only try once
                 assert mock_ollama_client.analyze_image_context.call_count == 1
-                assert "Primary model analysis failed after" in caplog.text or "Analysis failed after" in caplog.text
+                assert "analysis failed after" in caplog.text
 
             # Reset mock for next iteration
             mock_ollama_client.analyze_image_context.reset_mock()

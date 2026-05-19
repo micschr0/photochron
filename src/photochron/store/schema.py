@@ -4,7 +4,7 @@ SQL schema definition for photochron Feature Store.
 
 import sqlite3
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA_SQL = """
 -- Photos table: stores metadata about ingested photos
@@ -106,7 +106,22 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
     end_time TIMESTAMP,
     status TEXT NOT NULL,               -- 'running', 'completed', 'failed'
     photos_processed INTEGER DEFAULT 0,
+    error_message TEXT,                 -- Populated when status='failed'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Per-stage execution ledger: lets `PipelineStage.should_run` skip stages
+-- that already finished for a given run_id without re-doing work.
+CREATE TABLE IF NOT EXISTS pipeline_stage_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    stage_name TEXT NOT NULL,
+    status TEXT NOT NULL,               -- 'running', 'completed', 'failed'
+    started_at TIMESTAMP,
+    ended_at TIMESTAMP,
+    photos_processed INTEGER DEFAULT 0,
+    error_message TEXT,
+    UNIQUE(run_id, stage_name)
 );
 
 -- Create indices for frequent lookups
@@ -134,6 +149,11 @@ CREATE INDEX IF NOT EXISTS idx_anchor_constraints_run_id ON anchor_constraints (
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_run_id ON pipeline_runs (run_id);
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_start_time ON pipeline_runs (start_time);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_stage_runs_run_id
+    ON pipeline_stage_runs (run_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_stage_runs_status
+    ON pipeline_stage_runs (status);
 """
 
 
@@ -167,16 +187,21 @@ def migrate_schema(conn: sqlite3.Connection) -> None:
     if current_version == SCHEMA_VERSION:
         return  # Already up to date
 
-    # Migration logic for future versions
-    # For now, just recreate schema if version mismatch
     if current_version == 0:
         # Fresh database, create schema
         create_schema(conn)
-    else:
-        # Future migrations would go here
-        # For now, we'll recreate (in development)
-        # In production, we would apply incremental migrations
-        pass
+    elif current_version < SCHEMA_VERSION:
+        # Additive migrations from v1 → current. SQLite's `IF NOT EXISTS` and
+        # `CREATE INDEX IF NOT EXISTS` make the full SCHEMA_SQL idempotent;
+        # the only thing missing on an upgrade is the `error_message` column
+        # on `pipeline_runs` (introduced in v2).
+        conn.executescript(SCHEMA_SQL)
+        try:
+            conn.execute("ALTER TABLE pipeline_runs ADD COLUMN error_message TEXT")
+        except sqlite3.OperationalError:
+            # Column already exists — running an unrelated migration twice is
+            # cheap, so we tolerate this silently.
+            pass
 
     # Update to current version
     conn.execute(

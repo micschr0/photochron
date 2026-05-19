@@ -348,15 +348,6 @@ class Config(BaseModel):
     context: ConfigContext = Field(default_factory=ConfigContext)
     logging: ConfigLogging = Field(default_factory=ConfigLogging)
 
-    input_dir: str | None = Field(
-        None,
-        description="Runtime input directory (set by PipelineRunner, not persisted).",
-    )
-    dry_run: bool = Field(
-        False,
-        description="Runtime dry-run flag (set by PipelineRunner, not persisted).",
-    )
-
     model_config = ConfigDict(
         extra="forbid",
         validate_assignment=True,

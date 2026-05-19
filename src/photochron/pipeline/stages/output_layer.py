@@ -36,8 +36,14 @@ class OutputLayerStage(PipelineStage):
         """Write renamed copies, EXIF-enriched copies, JSON report, and CSV timeline."""
         logger.info("Starting output layer stage")
 
-        output_dir = Path(getattr(self, "_output_override", None) or get_config().paths.output_dir)
-        dry_run = bool(getattr(self, "_dry_run", False))
+        # Prefer the RunContext bound by PipelineRunner; fall back to the
+        # configured output_dir / default-False dry_run for direct-call paths
+        # (e.g. legacy tests that instantiate the stage by hand).
+        if self.context is not None and self.context.output_dir is not None:
+            output_dir = Path(self.context.output_dir)
+        else:
+            output_dir = Path(get_config().paths.output_dir)
+        dry_run = bool(self.context.dry_run) if self.context is not None else False
 
         rows = self._load_rankings()
         if not rows:
