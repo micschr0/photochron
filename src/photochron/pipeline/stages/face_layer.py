@@ -120,8 +120,8 @@ class FaceLayerStage(PipelineStage):
         """
         if not downsample_path.exists():
             raise FileNotFoundError(f"Downsampled image not found: {downsample_path}")
-        with Image.open(downsample_path) as img:
-            img = img.convert("RGB")
+        with Image.open(downsample_path) as img_file:
+            img: Image.Image = img_file.convert("RGB")
             return np.array(img)
 
     def _crop_face_with_margin(

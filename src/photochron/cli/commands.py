@@ -5,6 +5,7 @@ CLI command implementations.
 from __future__ import annotations
 
 import json as _json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -368,12 +369,15 @@ def doctor(
     next_steps: list[str] = []
 
     # onnxruntime + providers ----------------------------------------------
-    resolve_providers = None
-    is_apple_silicon = None
+    resolve_providers: Callable[[str], tuple[list[str], list[dict[str, str]]]] | None = None
+    is_apple_silicon: bool | None = None
     try:
         import onnxruntime as ort
 
-        from photochron.face.insightface_wrapper import _is_apple_silicon, resolve_providers
+        from photochron.face.insightface_wrapper import _is_apple_silicon
+        from photochron.face.insightface_wrapper import resolve_providers as resolve_providers_impl
+
+        resolve_providers = resolve_providers_impl
 
         is_apple_silicon = _is_apple_silicon()
         available = ort.get_available_providers()
@@ -429,7 +433,7 @@ def doctor(
 
     # Ollama reachability ---------------------------------------------------
     try:
-        import ollama  # type: ignore[import-not-found]
+        import ollama
 
         response = ollama.list()
         models = [m.get("name", "?") for m in response.get("models", [])]

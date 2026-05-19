@@ -28,7 +28,7 @@ from photochron.store import get_store
 class IngestionStage(PipelineStage):
     """Stage 1: Photo ingestion and preprocessing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize ingestion stage with configuration."""
         self.config = get_config()
         self.supported_extensions = set(self.config.ingestion.supported_formats)
@@ -128,7 +128,7 @@ class IngestionStage(PipelineStage):
         if not input_dir.exists():
             raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
 
-        image_files = []
+        image_files: list[Path] = []
         for ext in self.supported_extensions:
             image_files.extend(input_dir.glob(f"*{ext}"))
             image_files.extend(input_dir.glob(f"*{ext.upper()}"))
@@ -153,7 +153,8 @@ class IngestionStage(PipelineStage):
             existing_photo = self._get_existing_photo(content_hash)
             cached_perceptual_hash = existing_photo.get("perceptual_hash") if existing_photo else None
 
-            with Image.open(file_path) as img:
+            with Image.open(file_path) as img_file:
+                img: Image.Image = img_file
                 # Convert to RGB if necessary
                 if img.mode not in ("RGB", "L"):
                     img = img.convert("RGB")
@@ -171,8 +172,8 @@ class IngestionStage(PipelineStage):
                 format_name = img.format or "UNKNOWN"
 
                 # Create downsampled version (skip if already exists and cached)
-                downsampled_path = None
-                if not cached_perceptual_hash or not existing_photo.get("downsample_path"):
+                downsampled_path: Path | None = None
+                if not cached_perceptual_hash or existing_photo is None or not existing_photo.get("downsample_path"):
                     downsampled_path = self._create_downsampled_image(img, phash_hex, downsampled_dir, format_name)
                 else:
                     # Use existing downsampled path
@@ -245,7 +246,7 @@ class IngestionStage(PipelineStage):
 
     def _extract_exif_metadata(self, file_path: Path) -> dict[str, Any]:
         """Extract EXIF metadata from image file."""
-        exif_data = {}
+        exif_data: dict[str, Any] = {}
 
         try:
             # First try with piexif for detailed EXIF
@@ -285,9 +286,9 @@ class IngestionStage(PipelineStage):
                     exif = img.getexif()
                     if exif:
                         # Get DateTimeOriginal (tag 36867)
-                        dt = exif.get(36867)
-                        if dt:
-                            exif_data["datetime"] = dt
+                        dt_val = exif.get(36867)
+                        if dt_val:
+                            exif_data["datetime"] = dt_val
 
                         # Get Make (tag 271) and Model (tag 272)
                         make = exif.get(271)
@@ -345,7 +346,7 @@ class IngestionStage(PipelineStage):
         if ref in [b"S", b"W"]:
             decimal = -decimal
 
-        return decimal
+        return float(decimal)
 
     def _compute_content_hash(self, file_path: Path) -> str:
         """Compute MD5 hash of file content for duplicate detection."""

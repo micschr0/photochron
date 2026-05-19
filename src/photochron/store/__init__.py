@@ -46,7 +46,7 @@ class DatabaseStore:
             self._local.conn.execute("PRAGMA foreign_keys = ON")
             # Enable WAL mode for better concurrency
             self._local.conn.execute("PRAGMA journal_mode = WAL")
-        return self._local.conn
+        return self._local.conn  # type: ignore[no-any-return]
 
     @contextmanager
     def transaction(self) -> Generator[sqlite3.Connection, None, None]:

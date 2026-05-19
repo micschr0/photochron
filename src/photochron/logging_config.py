@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
+from types import FrameType
+from typing import Any
 
 from loguru import logger
 
@@ -21,11 +23,13 @@ class InterceptHandler(logging.Handler):
     """Route stdlib logging records into loguru."""
 
     def emit(self, record: logging.LogRecord) -> None:
+        level: str | int
         try:
             level = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
 
+        frame: FrameType | None
         frame, depth = logging.currentframe(), 2
         while frame and frame.f_code.co_filename == logging.__file__:
             frame = frame.f_back
@@ -34,7 +38,7 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
-def _format_extra(record: dict) -> str:
+def _format_extra(record: Any) -> str:
     """Render bound context fields (run_id, stage, etc.) compactly."""
     extra = record.get("extra") or {}
     if not extra:
@@ -43,7 +47,7 @@ def _format_extra(record: dict) -> str:
     return f" [{parts}]"
 
 
-def _console_format(record: dict) -> str:
+def _console_format(record: Any) -> str:
     return (
         "<green>{time:HH:mm:ss}</green> "
         "<level>{level: <8}</level> "
@@ -52,7 +56,7 @@ def _console_format(record: dict) -> str:
     )
 
 
-def _file_format(record: dict) -> str:
+def _file_format(record: Any) -> str:
     return (
         "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
         "{name}:{function}:{line} | {message}" + _format_extra(record) + "\n{exception}"

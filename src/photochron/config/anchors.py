@@ -4,7 +4,7 @@ Parsing and validation for anchors.yaml file.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -143,7 +143,7 @@ def validate_anchors(anchors: Anchors) -> list[str]:
     if anchors.events:
         hard_events = [e for e in anchors.events if e.type == "hard"]
         # Check for events with same date but different constraints
-        event_dates = {}
+        event_dates: dict[Any, str] = {}
         for event in hard_events:
             if event.date in event_dates:
                 warnings.append(

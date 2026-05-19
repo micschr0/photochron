@@ -73,6 +73,7 @@ ignore = []
 
 [tool.mypy]
 python_version = "3.12"
+plugins = ["pydantic.mypy"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -85,6 +86,20 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+
+[[tool.mypy.overrides]]
+# Third-party packages that do not ship a `py.typed` marker. Treating their
+# imports as `Any` is preferable to widely scattered `# type: ignore` comments
+# — the surface we touch is tiny (a few attribute accesses) and the alternative
+# (writing local stubs) is not worth the maintenance cost.
+module = [
+    "piexif",
+    "insightface.*",
+    "onnxruntime",
+    "psutil",
+    "imagehash",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
