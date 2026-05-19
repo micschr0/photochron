@@ -14,6 +14,7 @@ from photochron.pipeline import PipelineStage, register_stage
 from photochron.ranking.constraints import apply_constraints
 from photochron.ranking.estimator import (
     DateEstimate,
+    apply_review_overrides,
     combine_signals,
     face_year_estimate,
     rank_estimates,
@@ -72,6 +73,14 @@ class RankingEngineStage(PipelineStage):
 
         apply_constraints(estimates, constraint_set)
 
+        # Last: pin photos the user manually corrected via `photochron review`.
+        # Overrides are intentionally applied *after* anchor constraints so the
+        # user's explicit correction is the final word.
+        overrides = self._load_review_overrides()
+        if overrides:
+            n = apply_review_overrides(estimates, overrides)
+            logger.info("Applied {} user review override(s)", n)
+
         ranked = rank_estimates([(photo_id, estimate) for photo_id, _, estimate in estimates])
         rank_by_photo: dict[int, int] = dict(ranked)
 
@@ -111,6 +120,23 @@ class RankingEngineStage(PipelineStage):
                 """
             )
             return [dict(row) for row in cursor.fetchall()]
+
+    def _load_review_overrides(self) -> dict[int, dict[str, int | None]]:
+        """Read review_overrides table; tolerate absence (lazy table)."""
+        store = get_store()
+        with store.transaction() as conn:
+            try:
+                cursor = conn.execute("SELECT photo_id, estimated_year, estimated_month FROM review_overrides")
+                rows = cursor.fetchall()
+            except Exception:  # noqa: BLE001 — table created lazily by `photochron review`
+                return {}
+        return {
+            int(row["photo_id"]): {
+                "estimated_year": row["estimated_year"],
+                "estimated_month": row["estimated_month"],
+            }
+            for row in rows
+        }
 
     def _best_face_year(self, photo: dict, today: date) -> tuple[int | None, float | None]:
         """Pick the highest-confidence face with a birthday and return (year, conf)."""

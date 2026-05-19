@@ -96,11 +96,21 @@ Two options:
 
 1. **Run `photochron review`.** It walks every photo with confidence
    below a threshold (default 0.5) and lets you accept / edit / skip.
-   Edits persist into a `review_overrides` table.
+   Edits persist into a `review_overrides` table and are applied by the
+   ranking engine on the next `photochron run` (you do *not* need to
+   re-run the heavy face / context stages — the override is consumed
+   purely by stage 5). Overrides outrank every AI signal *and* EXIF,
+   by design: the human reviewer's correction is the last word.
 2. **Add an anchor.** Open `anchors.yaml` and add a `known_dates` entry
    pinning that file to the right year (and month if you know it).
    Re-run `photochron run` and the ranking engine will honour the
    constraint.
+
+To remove an override you regret, run:
+
+```sql
+sqlite3 .photochron/cache.db "DELETE FROM review_overrides WHERE photo_id = 42;"
+```
 
 ## "Can I re-run only the slow context layer without re-doing ingestion?"
 
