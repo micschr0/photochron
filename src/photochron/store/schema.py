@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS faces (
     bbox_x2 REAL NOT NULL,
     bbox_y2 REAL NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE,
     FOREIGN KEY (person_id) REFERENCES persons (id) ON DELETE SET NULL
 );
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS context (
     hypothesis_notes TEXT,              -- Explanation when multiple hypotheses exist
     raw_json TEXT NOT NULL,             -- Full LLM response JSON
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
 );
 
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS rankings (
     review_needed BOOLEAN DEFAULT FALSE, -- Flag for low confidence results
     ranking_json TEXT NOT NULL,         -- Full ranking details JSON
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
 );
 

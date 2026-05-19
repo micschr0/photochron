@@ -264,7 +264,7 @@ class QueryHelper:
         """Get all photos that don't have context analysis."""
         cursor = self.conn.execute(
             """
-            SELECT p.* 
+            SELECT p.*
             FROM photos p
             LEFT JOIN context c ON p.id = c.photo_id
             WHERE c.id IS NULL
@@ -285,7 +285,7 @@ class QueryHelper:
         """
         cursor = self.conn.execute(
             """
-            SELECT p.* 
+            SELECT p.*
             FROM photos p
             LEFT JOIN context c ON p.id = c.photo_id
             WHERE c.id IS NULL
