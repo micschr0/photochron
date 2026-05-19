@@ -5,8 +5,12 @@ This directory contains user-facing documentation for photochron.
 ## Documentation Index
 
 ### User Guides
+- **[Architecture map](architecture.md)**: Feature → module quick reference
 - **[Pipeline Architecture](pipeline.md)**: Detailed explanation of the 6-stage pipeline
 - **[Configuration Reference](configuration.md)**: Complete configuration options and environment variables
+- **[FAQ](faq.md)**: Top first-day questions (privacy, Ollama, low memory, AGPL)
+- **[Ollama setup](ollama-setup.md)**: Installing the local vision LLM
+- **[Performance](performance.md)**: Apple-Silicon tuning and `photochron doctor`
 - **[Testing Strategy](testing.md)**: Comprehensive test suite documentation and test organization
 - **[Changelog](../CHANGELOG.md)**: Version history and release notes
 
