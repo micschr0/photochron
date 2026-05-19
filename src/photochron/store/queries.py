@@ -5,7 +5,7 @@ Query helper functions for common database operations.
 import json
 import sqlite3
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from ..models import (
     Context,
@@ -48,6 +48,7 @@ class QueryHelper:
                 photo.perceptual_hash,
             ),
         )
+        assert cursor.lastrowid is not None
         return cursor.lastrowid
 
     def get_photo_by_id(self, photo_id: int) -> Photo | None:
@@ -74,6 +75,7 @@ class QueryHelper:
             "INSERT INTO persons (person_id, name, birthday) VALUES (?, ?, ?)",
             (person.person_id, person.name, person.birthday),
         )
+        assert cursor.lastrowid is not None
         return cursor.lastrowid
 
     def get_person_by_id(self, person_id: int) -> Person | None:
@@ -150,6 +152,7 @@ class QueryHelper:
                 face.bbox_y2,
             ),
         )
+        assert cursor.lastrowid is not None
         return cursor.lastrowid
 
     def get_faces_by_photo_id(self, photo_id: int) -> list[Face]:
@@ -195,6 +198,7 @@ class QueryHelper:
                 context.raw_json,
             ),
         )
+        assert cursor.lastrowid is not None
         return cursor.lastrowid
 
     def upsert_context(self, context: ContextCreate) -> int:
@@ -233,6 +237,7 @@ class QueryHelper:
                 context.raw_json,
             ),
         )
+        assert cursor.lastrowid is not None
         return cursor.lastrowid
 
     def get_context_by_photo_id(self, photo_id: int) -> Context | None:
@@ -332,6 +337,7 @@ class QueryHelper:
                 ranking.ranking_json,
             ),
         )
+        assert cursor.lastrowid is not None
         return cursor.lastrowid
 
     def get_ranking_by_photo_id(self, photo_id: int) -> Ranking | None:
@@ -365,9 +371,10 @@ class QueryHelper:
                 run.photos_processed,
             ),
         )
+        assert cursor.lastrowid is not None
         return cursor.lastrowid
 
-    def update_pipeline_run(self, run_id: str, **updates) -> None:
+    def update_pipeline_run(self, run_id: str, **updates: Any) -> None:
         """Update pipeline run fields."""
         if not updates:
             return
@@ -402,22 +409,22 @@ class QueryHelper:
     def get_photo_count(self) -> int:
         """Get total number of photos in database."""
         cursor = self.conn.execute("SELECT COUNT(*) FROM photos")
-        return cursor.fetchone()[0]
+        return cast(int, cursor.fetchone()[0])
 
     def get_face_count(self) -> int:
         """Get total number of face detections."""
         cursor = self.conn.execute("SELECT COUNT(*) FROM faces")
-        return cursor.fetchone()[0]
+        return cast(int, cursor.fetchone()[0])
 
     def get_context_count(self) -> int:
         """Get total number of context analyses."""
         cursor = self.conn.execute("SELECT COUNT(*) FROM context")
-        return cursor.fetchone()[0]
+        return cast(int, cursor.fetchone()[0])
 
     def get_ranking_count(self) -> int:
         """Get total number of rankings."""
         cursor = self.conn.execute("SELECT COUNT(*) FROM rankings")
-        return cursor.fetchone()[0]
+        return cast(int, cursor.fetchone()[0])
 
 
 def initialize_database(conn: sqlite3.Connection) -> QueryHelper:

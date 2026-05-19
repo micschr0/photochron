@@ -6,6 +6,7 @@ for vision LLM analysis of photos.
 """
 
 import base64
+import binascii
 import json
 import math
 import os
@@ -21,7 +22,7 @@ from typing import Any, Literal
 
 import ollama
 from loguru import logger
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator, model_validator
 
 # Maximum file size for base64 encoding (10MB)
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB in bytes
@@ -95,15 +96,13 @@ class ContextAnalysisResult(BaseModel):
 
     @field_validator("alternative_decades")
     @classmethod
-    def validate_alternative_decades(cls, v: list[str] | None, info) -> list[str] | None:
+    def validate_alternative_decades(cls, v: list[str] | None, info: ValidationInfo) -> list[str] | None:
         """Validate alternative decades format."""
         if v is None:
             return v
 
         validated_decades = []
         for decade in v:
-            if decade is None:
-                continue
             # Reuse the decade validator logic
             try:
                 # Check format
@@ -133,7 +132,7 @@ class ContextAnalysisResult(BaseModel):
 
     @field_validator("season_confidence")
     @classmethod
-    def validate_season_confidence(cls, v: float | None, info) -> float | None:
+    def validate_season_confidence(cls, v: float | None, info: ValidationInfo) -> float | None:
         """Validate season confidence is provided when season is set."""
         if info.data.get("season") is not None and v is None:
             logger.warning("Season is set but season_confidence is None. Consider providing confidence score.")
@@ -143,7 +142,7 @@ class ContextAnalysisResult(BaseModel):
 
     @field_validator("event_confidence")
     @classmethod
-    def validate_event_confidence(cls, v: float | None, info) -> float | None:
+    def validate_event_confidence(cls, v: float | None, info: ValidationInfo) -> float | None:
         """Validate event confidence is provided when event_hint is set."""
         if info.data.get("event_hint") is not None and v is None:
             logger.warning("event_hint is set but event_confidence is None. Consider providing confidence score.")
@@ -155,7 +154,7 @@ class ContextAnalysisResult(BaseModel):
 
     @field_validator("photo_medium_confidence")
     @classmethod
-    def validate_photo_medium_confidence(cls, v: float | None, info) -> float | None:
+    def validate_photo_medium_confidence(cls, v: float | None, info: ValidationInfo) -> float | None:
         """Validate photo medium confidence is provided when photo_medium is not 'unknown'."""
         photo_medium = info.data.get("photo_medium", "digital")
         if photo_medium != "unknown" and v is None:
@@ -216,12 +215,13 @@ class ContextAnalysisResult(BaseModel):
                 self.alternative_decades = None
 
         # Ensure visual_evidence is a list if not None
+        # (Defensive: LLM may return a scalar string; pydantic typing says list[str] | None but runtime may differ.)
         if self.visual_evidence is not None and not isinstance(self.visual_evidence, list):
-            self.visual_evidence = [self.visual_evidence] if self.visual_evidence else None
+            self.visual_evidence = [self.visual_evidence] if self.visual_evidence else None  # type: ignore[unreachable]
 
         # Ensure alternative_decades is a list if not None
         if self.alternative_decades is not None and not isinstance(self.alternative_decades, list):
-            self.alternative_decades = [self.alternative_decades] if self.alternative_decades else None
+            self.alternative_decades = [self.alternative_decades] if self.alternative_decades else None  # type: ignore[unreachable]
 
         return self
 
@@ -442,14 +442,14 @@ class OllamaClient:
             try:
                 base64.b64decode(data, validate=True)
                 return True
-            except (ValueError, TypeError, base64.binascii.Error):
+            except (ValueError, TypeError, binascii.Error):
                 # Try URL-safe base64
                 try:
                     base64.urlsafe_b64decode(data)
                     return True
-                except (ValueError, TypeError, base64.binascii.Error):
+                except (ValueError, TypeError, binascii.Error):
                     return False
-        except (ValueError, TypeError, base64.binascii.Error):
+        except (ValueError, TypeError, binascii.Error):
             return False
 
     def _prepare_image_input(self, image_input: str, use_base64: bool = False) -> str:
@@ -493,6 +493,7 @@ class OllamaClient:
                 # Create a new exception with enhanced message, chained to the original
                 # This preserves all attributes of the original exception through the chain
                 error_msg = f"Invalid image file {image_input}: {e}"
+                new_exc: OSError | ValueError
                 if isinstance(e, OSError):
                     # For OSError and subclasses, create new exception with same type
                     new_exc = type(e)(error_msg)

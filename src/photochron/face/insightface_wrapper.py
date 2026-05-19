@@ -210,7 +210,7 @@ class InsightFaceWrapper:
         norm = np.linalg.norm(embedding)
         if norm > 0:
             embedding = embedding / norm
-        return embedding
+        return embedding  # type: ignore[no-any-return]
 
     def estimate_age(self, face_image: np.ndarray) -> tuple[float, float]:
         """

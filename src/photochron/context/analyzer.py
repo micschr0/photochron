@@ -27,6 +27,7 @@ from photochron.models.ollama_client import (
 T = TypeVar("T")
 
 # Import ollama exceptions for better error handling
+OLLAMA_EXCEPTIONS: tuple[type[BaseException], ...]
 try:
     from ollama import RequestError, ResponseError
 
@@ -439,7 +440,7 @@ class ContextAnalyzer:
         elif strategy == AnalysisStrategy.FAST:
             result = self._analyze_fast(image_path)
         else:
-            logger.warning(f"Unknown strategy: {strategy}, using default")
+            logger.warning(f"Unknown strategy: {strategy}, using default")  # type: ignore[unreachable]
             result = self._analyze_default(image_path)
 
         # Apply fallback if needed
@@ -758,7 +759,7 @@ class ContextAnalyzer:
         # Ensure visual_evidence is a proper list
         if result.visual_evidence is not None:
             if not isinstance(result.visual_evidence, list):
-                result.visual_evidence = [result.visual_evidence]
+                result.visual_evidence = [result.visual_evidence]  # type: ignore[unreachable]
             # Remove empty strings
             result.visual_evidence = [
                 evidence
@@ -771,7 +772,7 @@ class ContextAnalyzer:
         # Ensure alternative_decades is a proper list
         if result.alternative_decades is not None:
             if not isinstance(result.alternative_decades, list):
-                result.alternative_decades = [result.alternative_decades]
+                result.alternative_decades = [result.alternative_decades]  # type: ignore[unreachable]
             # Remove empty strings and invalid formats
             valid_decades = []
             for decade in result.alternative_decades:
