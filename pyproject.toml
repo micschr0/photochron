@@ -142,7 +142,7 @@ dev = [
     # Pin mypy to the 1.x line — mypy 2.0 ships breaking changes around
     # Pydantic Field(default_factory=...) that the codebase has not been
     # migrated to yet. Bump deliberately once the v2 migration lands.
-    "mypy>=1.20.0,<2.0",
+    "mypy>=1.20.0,<3.0",
     "ruff>=0.15.10",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
