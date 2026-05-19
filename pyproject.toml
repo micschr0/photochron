@@ -129,10 +129,8 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
-# Note: this is the *target*, used by `make cov` for the local full-suite
-# (unit + integration) run. The CI job runs unit tests only and passes
-# `--cov-fail-under=0` to override this — unit coverage currently sits at
-# ~70 % because the heavy ML stages need the integration suite to drive them.
+# Coverage target, enforced both by `make cov` (full suite locally) and by
+# CI's unit-only test job (~83 % after the dedicated coverage-raising PR).
 fail_under = 80
 
 [dependency-groups]
