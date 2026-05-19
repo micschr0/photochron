@@ -186,6 +186,45 @@ def combine_signals(
     return estimate
 
 
+def apply_review_overrides(
+    estimates: list[tuple[int, str, DateEstimate]],
+    overrides: dict[int, dict[str, int | None]],
+) -> int:
+    """Apply manual ``photochron review`` corrections in-place.
+
+    For every estimate whose ``photo_id`` appears in *overrides*, the year and
+    month are replaced and the estimate is pinned with confidence 1.0 and
+    ``review_needed=False``. A breadcrumb signal ``user_override`` is added so
+    the per-photo report keeps a record of where the date came from.
+
+    Overrides outrank every AI signal *and* EXIF, by design: the human reviewer
+    decided the photo's date is X. If you want EXIF to win again, delete the
+    override row (``DELETE FROM review_overrides WHERE photo_id=?``).
+
+    Returns the number of overrides actually applied.
+    """
+    applied = 0
+    for i, (photo_id, file_path, est) in enumerate(estimates):
+        override = overrides.get(photo_id)
+        if not override:
+            continue
+        year = override.get("estimated_year")
+        if year is None:
+            continue
+        month_val = override.get("estimated_month")
+        new_est = DateEstimate(
+            year=int(year),
+            month=int(month_val) if month_val is not None else None,
+            confidence=1.0,
+            signals={**est.signals, "user_override": {"year": float(year), "confidence": 1.0}},
+            review_needed=False,
+            notes=("user-override; " + est.notes) if est.notes else "user-override",
+        )
+        estimates[i] = (photo_id, file_path, new_est)
+        applied += 1
+    return applied
+
+
 def rank_estimates(
     photo_estimates: list[tuple[int, DateEstimate]],
 ) -> list[tuple[int, int]]:
