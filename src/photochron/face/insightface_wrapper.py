@@ -18,8 +18,12 @@ def _is_apple_silicon() -> bool:
     return platform.system() == "Darwin" and platform.machine() == "arm64"
 
 
-def _resolve_providers(backend: str) -> tuple[list[str], list[dict[str, str]]]:
+def resolve_providers(backend: str) -> tuple[list[str], list[dict[str, str]]]:
     """Translate a ``ConfigFace.backend`` value into ONNX Runtime providers.
+
+    Public; used by both the face stage and the ``doctor`` / ``status`` CLI
+    commands. (Previously named ``_resolve_providers`` with an underscore —
+    the alias below preserves the old name for one release.)
 
     ``backend`` values:
     - ``"auto"``   – CoreML on Apple Silicon, CPU otherwise.
@@ -122,7 +126,7 @@ class InsightFaceWrapper:
         # Preserved for back-compat callers inspecting the attribute.
         self.use_gpu = backend in ("cuda", "coreml")
         self._model: Any | None = None
-        self._providers, self._provider_options = _resolve_providers(backend)
+        self._providers, self._provider_options = resolve_providers(backend)
         logger.debug(
             "InsightFaceWrapper configured with backend={} → providers={}",
             backend,
@@ -258,3 +262,8 @@ class InsightFaceWrapper:
     def unload(self) -> None:
         """Unload model to free memory."""
         self._model = None
+
+
+# Backwards-compatibility alias. Will be removed in a future release; new
+# call sites should import ``resolve_providers`` directly.
+_resolve_providers = resolve_providers
