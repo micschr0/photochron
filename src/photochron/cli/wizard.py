@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import yaml
 from rich.console import Console
@@ -132,7 +133,7 @@ def collect_answers(
 
 def render_config_yaml(answers: InitAnswers) -> str:
     """Serialize the wizard answers into a config.yaml compatible with Config."""
-    cfg: dict[str, object] = {
+    cfg: dict[str, Any] = {
         "version": "1.0",
         "paths": {
             "cache_dir": ".photochron",

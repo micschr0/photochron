@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json as _json
 from pathlib import Path
+from typing import Any
 
 import typer
 from loguru import logger
@@ -248,7 +249,7 @@ def status(
     """
     from photochron.store import get_store
 
-    payload: dict[str, object] = {"database": None, "cache": {}, "latest_run": None, "face_backend": {}}
+    payload: dict[str, Any] = {"database": None, "cache": {}, "latest_run": None, "face_backend": {}}
 
     try:
         store = get_store()
@@ -353,7 +354,7 @@ def doctor(
     import platform as _platform
     import sys
 
-    report: dict[str, object] = {
+    report: dict[str, Any] = {
         "python": sys.version.split()[0],
         "platform": f"{_platform.system()} {_platform.machine()}",
         "onnxruntime": None,

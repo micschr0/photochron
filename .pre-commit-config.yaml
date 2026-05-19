@@ -30,15 +30,12 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.20.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [pydantic, types-pyyaml]
-        # Keep mypy scoped to src/ so it doesn't try to type-check the test
-        # suite (which deliberately leans on `Any` for fixtures/mocks).
-        files: ^src/
-        args: [--config-file=pyproject.toml]
+  # Note: the mypy hook is intentionally NOT enabled in pre-commit. It would
+  # need the full dependency tree as `additional_dependencies` (typer, rich,
+  # loguru, ollama, onnxruntime, …) to type-check the CLI surface, which
+  # bloats every contributor's pre-commit env to ~200 MB and still drifts
+  # from what the real install resolves. mypy runs in CI instead, against a
+  # real venv that mirrors what users get with `uv sync`.
 
   # Push-time test gate: unit tests only. The full suite (integration) needs
   # Ollama + InsightFace running and is intentionally skipped here so `git

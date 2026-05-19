@@ -114,13 +114,20 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
+# Note: this is the *target*, used by `make cov` for the local full-suite
+# (unit + integration) run. The CI job runs unit tests only and passes
+# `--cov-fail-under=0` to override this — unit coverage currently sits at
+# ~70 % because the heavy ML stages need the integration suite to drive them.
 fail_under = 80
 
 [dependency-groups]
 # PEP 735 dev group. Single source of truth — preferred over the deprecated
 # `[project.optional-dependencies]` block.
 dev = [
-    "mypy>=1.20.0",
+    # Pin mypy to the 1.x line — mypy 2.0 ships breaking changes around
+    # Pydantic Field(default_factory=...) that the codebase has not been
+    # migrated to yet. Bump deliberately once the v2 migration lands.
+    "mypy>=1.20.0,<2.0",
     "ruff>=0.15.10",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
