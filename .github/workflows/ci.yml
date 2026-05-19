@@ -94,14 +94,14 @@ jobs:
             ollama onnxruntime pytest pytest-cov
           uv pip install --python .venv-ci/bin/python -e . --no-deps
       - name: pytest (unit only)
-        # Coverage is *reported* but not enforced in CI — the pyproject
-        # `fail_under = 80` target assumes the integration suite ran. Unit
-        # tests alone cover ~70 %; raising the threshold is its own
-        # follow-up PR.
+        # Coverage gate matches the local `make cov` target (80 %).
+        # Unit-suite coverage sits at ~83 % after the dedicated
+        # coverage-raising follow-up PR; integration tests run locally
+        # only.
         run: |
           .venv-ci/bin/pytest tests/unit -m "not integration" \
             --cov=src/photochron --cov-report=term-missing \
-            --no-cov-on-fail --cov-fail-under=0 \
+            --cov-fail-under=80 \
             --junitxml=junit.xml
       - name: Upload coverage
         if: always()
