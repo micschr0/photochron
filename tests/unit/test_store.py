@@ -52,8 +52,8 @@ def test_schema_creation(database_store):
 
         # Check that tables exist
         cursor = conn.execute("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' 
+            SELECT name FROM sqlite_master
+            WHERE type='table'
             AND name IN ('photos', 'faces', 'context', 'rankings', 'pipeline_runs', 'persons')
         """)
         tables = {row[0] for row in cursor.fetchall()}

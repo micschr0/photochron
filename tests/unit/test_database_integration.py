@@ -755,7 +755,7 @@ class TestDatabaseSchemaCompliance:
             for index_name, table_name in index_queries:
                 cursor = conn.execute(
                     """
-                    SELECT name FROM sqlite_master 
+                    SELECT name FROM sqlite_master
                     WHERE type='index' AND name=? AND tbl_name=?
                     """,
                     (index_name, table_name),
