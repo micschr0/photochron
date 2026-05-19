@@ -65,7 +65,7 @@ jobs:
           uv venv .venv-ci
           uv pip install --python .venv-ci/bin/python \
             pydantic pyyaml loguru typer rich pillow piexif imagehash \
-            ollama "mypy>=1.20,<2" types-pyyaml
+            ollama "mypy>=1.20,<3" types-pyyaml
           uv pip install --python .venv-ci/bin/python -e . --no-deps
       - name: mypy
         run: .venv-ci/bin/mypy src/

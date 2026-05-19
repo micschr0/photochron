@@ -1098,8 +1098,10 @@ Example with multiple hypotheses:
     def _create_fallback_result(self, data: dict[str, Any]) -> ContextAnalysisResult | None:
         """Create a fallback result when validation fails."""
         try:
-            # Clean the data before creating fallback
-            cleaned_data = {}
+            # Clean the data before creating fallback. Explicit `dict[str, Any]`
+            # so mypy 2.x doesn't pin the value type to the first inserted
+            # element's type and then complain about every subsequent insert.
+            cleaned_data: dict[str, Any] = {}
 
             # Handle decade field
             decade = data.get("decade")
