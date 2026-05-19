@@ -8,8 +8,11 @@ from pathlib import Path
 
 import pytest
 from loguru import logger as _loguru_logger
+from PIL import Image
 
+from photochron import config as _config_module
 from photochron.config import Config, ConfigModels, ConfigPaths, ConfigPipeline
+from photochron.pipeline import reset_registry
 from photochron.store import DatabaseStore, close_store
 from photochron.store.schema import create_schema
 
@@ -73,11 +76,17 @@ def mock_config() -> Config:
 
 
 @pytest.fixture
-def sample_image_path() -> Path:
-    """Get path to sample test image."""
-    # TODO: Create actual test image
-    # For now, return a non-existent path
-    return Path("tests/fixtures/sample.jpg")
+def sample_image_path(tmp_path: Path) -> Path:
+    """Write a tiny synthetic JPEG to ``tmp_path`` and return its path.
+
+    The previous fixture returned a string pointing at a non-existent file,
+    which silently broke any test depending on it. Generating an in-memory
+    1x1 image gives every test an isolated file without dragging a binary
+    fixture into version control.
+    """
+    image_path = tmp_path / "sample.jpg"
+    Image.new("RGB", (8, 8), color=(127, 127, 127)).save(image_path, format="JPEG")
+    return image_path
 
 
 @pytest.fixture
@@ -112,9 +121,17 @@ def mock_ollama():
 
 @pytest.fixture(autouse=True)
 def cleanup_global_state():
-    """Clean up global state before each test."""
-    # Close any open database store
+    """Reset every process-global singleton before AND after each test.
+
+    Order-dependent failures used to be hard to spot because only the
+    ``DatabaseStore`` was reset; the pipeline registry and the Config
+    singleton leaked between tests. Resetting all three here keeps tests
+    independent regardless of execution order.
+    """
     close_store()
+    _config_module._config = None
+    reset_registry()
     yield
-    # Clean up after test
     close_store()
+    _config_module._config = None
+    reset_registry()
