@@ -4,6 +4,7 @@
 
 - `make check` — lint + type + unit tests; the "is my PR ready?" command (mirrors CI).
 - `make cov` — unit tests + coverage (gate 80%, also in ci.yml + Makefile + pyproject.toml).
+  When changing the coverage gate, update ALL THREE (CLI `--cov-fail-under` overrides pyproject).
 - `make fmt` — ruff format + autofix. `make install` first (= `uv sync --group dev` + pre-commit).
 - All recipes run via `uv run`, so local and CI use the same toolchain versions.
 
