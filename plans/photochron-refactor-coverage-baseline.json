@@ -1,0 +1,37 @@
+{
+  "program": "photochron-refactor-coverage",
+  "recorded_on_commit": "f2a60eb",
+  "gate": {
+    "command": ".venv-ci/bin/pytest tests/unit -m \"not integration\" --cov=src/photochron --cov-report=term-missing --cov-fail-under=<cov_floor> -q",
+    "test_count_floor": 413,
+    "cov_floor_local": 82,
+    "cov_floor_enforced_in_ci": 80,
+    "cov_floor_enforced_locations": [
+      ".github/workflows/ci.yml",
+      "Makefile",
+      "pyproject.toml [tool.coverage.report] fail_under"
+    ],
+    "cov_observed_pct": 82.87,
+    "cov_target_pct": 90,
+    "total_stmts": 3334,
+    "total_missing": 571,
+    "missing_for_90pct": 333,
+    "stmts_to_cover_for_90pct": 238
+  },
+  "module_missing_at_baseline": {
+    "src/photochron/models/ollama_client.py": 168,
+    "src/photochron/pipeline/stages/ingestion.py": 68,
+    "src/photochron/pipeline/__init__.py": 63,
+    "src/photochron/cli/commands.py": 54,
+    "src/photochron/pipeline/stages/face_layer.py": 41,
+    "src/photochron/context/analyzer.py": 36,
+    "src/photochron/pipeline/stages/context_layer.py": 27,
+    "src/photochron/ranking/constraints.py": 17,
+    "src/photochron/output/exif_writer.py": 12
+  },
+  "oversized_files_at_baseline": {
+    "src/photochron/models/ollama_client.py": 1274,
+    "src/photochron/context/analyzer.py": 934
+  },
+  "notes": "Floors are monotonic: test_count_floor and cov_floor_local may only increase. Local anti-gaming floor (82) is stricter than CI-enforced (80) by design; C5 raises all three enforced locations to 90. Re-measure module_missing after A4 (Step C0) before sizing C-work."
+}
