@@ -62,7 +62,14 @@ htmlcov/
 .swarm/
 .opencode/
 .claude/
+.serena/
 SWARM_PLAN.*
 openspec/
 agent_docs/
 commands/
+
+# Autonomous-run scratch (CI venv, locks, kill-switch, status files)
+.venv-ci/
+*.lock.d/
+*.STOP
+*_status.txt
