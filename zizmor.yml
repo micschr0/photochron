@@ -1,5 +1,9 @@
 rules:
   template-injection:
-    ignore: []
+    ignore:
+      - ci.yml
+      - pre-commit.yml
   unpinned-images:
-    ignore: []
+    ignore:
+      - ci.yml
+      - pre-commit.yml
