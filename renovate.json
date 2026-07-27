@@ -3,7 +3,6 @@
   "extends": ["config:best-practices", ":semanticCommits"],
   "labels": ["dependencies"],
   "timezone": "Europe/Berlin",
-  "schedule": ["after 8am and before 6pm on Monday"],
   "pip_requirements": { "enabled": true },
   "lockFileMaintenance": {
     "enabled": true,
